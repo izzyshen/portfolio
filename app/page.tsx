@@ -195,11 +195,15 @@ export default function Home() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         padding: "28px 40px", background: "#f7f6f3",
       }}>
-        <EditLine
-          initial={data.name}
-          onSave={v => patch({ name: v || data.name })}
-          style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: "#666" }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.jpg" alt="logo" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
+          <EditLine
+            initial={data.name}
+            onSave={v => patch({ name: v || data.name })}
+            style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: "#666" }}
+          />
+        </div>
         <Link href="/drift" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#888", textDecoration: "none" }}>
           <DriftIcon />
           <span>Projects Space</span>
