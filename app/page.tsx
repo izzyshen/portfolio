@@ -6,7 +6,7 @@ import Link from "next/link"
 // ── types ─────────────────────────────────────────────────────────────────────
 interface HourEntry { label: string; pct: number; color: string }
 interface RowItem    { id: string; label: string; slug?: string }
-interface SectionDef { id: string; label: string; isProjects?: boolean; items: RowItem[] }
+interface SectionDef { id: string; label: string; isProjects?: boolean; isArticles?: boolean; items: RowItem[] }
 
 interface HomeData {
   name: string
@@ -36,7 +36,7 @@ const DEFAULT: HomeData = {
       { id: "sixth",    label: "Sixth",     slug: "sixth"    },
       { id: "drift",    label: "Drift",     slug: "drift"    },
     ]},
-    { id: "thoughts", label: "Thoughts", items: [
+    { id: "thoughts", label: "Thoughts", isArticles: true, items: [
       { id: "t1", label: "Creative Paradigm in AI Era" },
     ]},
     { id: "creatives", label: "Creatives", items: [
@@ -164,10 +164,11 @@ function EditPara({
 
 // ── single row (editable label + project link + delete) ──────────────────────
 function RowEl({
-  item, onDelete, onSave,
+  item, basePath, onDelete, onSave,
   dragging, dropBefore, onDragStart, onDragEnter, onDrop, onDragEnd,
 }: {
   item: RowItem
+  basePath: string
   onDelete: () => void
   onSave: (v: string) => void
   dragging: boolean
@@ -215,7 +216,7 @@ function RowEl({
         ⠿
       </span>
       <Link
-        href={`/projects/${item.slug ?? slugify(item.label)}`}
+        href={`${basePath}/${item.slug ?? slugify(item.label)}`}
         title="open"
         style={{ color: "#aaa", fontSize: 12, flexShrink: 0, textDecoration: "none" }}
       >
@@ -271,6 +272,9 @@ export default function Home() {
       // a bio saved before contact links existed has nothing to linkify — give it
       // the sentence once, then leave it alone (it stays editable like any text)
       if (!HAS_CONTACT.test(saved.bio)) saved.bio = saved.bio.trimEnd() + CONTACT_SENTENCE
+      // a Thoughts section saved before the article template existed still
+      // routes through /projects — flip it so old data gets the new template too
+      saved.sections = saved.sections.map(s => s.id === "thoughts" ? { ...s, isArticles: true } : s)
       setData(saved)
     } catch {
       setData(DEFAULT)
@@ -401,6 +405,7 @@ export default function Home() {
               <RowEl
                 key={item.id}
                 item={item}
+                basePath={sec.isArticles ? "/thoughts" : "/projects"}
                 dragging={drag?.si === si && drag.from === ii}
                 dropBefore={drag?.si === si && drag.over === ii && drag.from !== ii}
                 onDragStart={() => setBothDrag({ si, from: ii, over: ii })}
