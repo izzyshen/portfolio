@@ -22,7 +22,7 @@ const STORAGE_KEY = "portfolio-home"
 const DEFAULT: HomeData = {
   name: "Izzy Shen",
   headline: "A constant product builder, based in Boston, NY, London",
-  bio: "London kid, couldn’t stop thinking about how intuition and taste is built. Studied architecture at Bartlett UCL, ended up top of class. But architecture mostly serves the few and that bothered me. So I started building products instead. Now at Harvard master of design engineering, constantly shipping products that redefine the ways we live.",
+  bio: "London kid, couldn’t stop thinking about how intuition and taste is built. Studied architecture at Bartlett UCL, ended up top of class. But architecture mostly serves the few and that bothered me. So I started building products instead. Now at Harvard master of design engineering, constantly shipping products that redefine the ways we live. Reach me on LinkedIn or over email.",
   hours: [
     { label: "Build and Think", pct: 40, color: "#111" },
     { label: "Sleep",           pct: 33, color: "#555" },
@@ -56,6 +56,74 @@ const DEFAULT: HomeData = {
 const uid = () => Math.random().toString(36).slice(2, 8)
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled"
+
+type DragState = { si: number; from: number; over: number } | null
+
+const move = <T,>(arr: T[], from: number, to: number) => {
+  const next = [...arr]
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  return next
+}
+
+// ── inline contact links inside the bio ───────────────────────────────────────
+const LINKEDIN_URL = "https://www.linkedin.com/in/izzy-yingqi-shen-5558201b4/"
+const MAILTO_URL = "mailto:izzy_shen@mde.harvard.edu"
+const CONTACT_RE = /\b(LinkedIn|e-?mail)\b/gi
+const HAS_CONTACT = /\b(LinkedIn|e-?mail)\b/i // stateless: /g regexes carry lastIndex across .test()
+const CONTACT_SENTENCE = " Reach me on LinkedIn or over email."
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+
+/** Turn bare "LinkedIn" / "email" words into real anchors, single pass. */
+function linkify(text: string) {
+  const style = "color:#222;border-bottom:1px solid #cfcdc7;text-decoration:none"
+  let out = ""
+  let last = 0
+  let m: RegExpExecArray | null
+  CONTACT_RE.lastIndex = 0
+  while ((m = CONTACT_RE.exec(text))) {
+    const word = m[0]
+    const isLi = word.toLowerCase() === "linkedin"
+    const href = isLi ? LINKEDIN_URL : MAILTO_URL
+    const attrs = isLi ? ' target="_blank" rel="noopener noreferrer"' : ""
+    out += escapeHtml(text.slice(last, m.index))
+    out += `<a contenteditable="false" href="${href}"${attrs} style="${style}">${escapeHtml(word)}</a>`
+    last = m.index + word.length
+  }
+  return out + escapeHtml(text.slice(last))
+}
+
+// ── editable paragraph that keeps its contact links live ─────────────────────
+function EditRichPara({
+  initial, style, onSave,
+}: { initial: string; style?: React.CSSProperties; onSave: (v: string) => void }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ref.current) ref.current.innerHTML = linkify(initial) }, [])
+  return (
+    <p
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onClick={e => {
+        // anchors sit inside a contentEditable region, so navigate by hand
+        const a = (e.target as HTMLElement).closest("a")
+        if (!a) return
+        e.preventDefault()
+        if (a.target === "_blank") window.open(a.href, "_blank", "noopener")
+        else window.location.href = a.href
+      }}
+      onBlur={e => {
+        const text = e.currentTarget.textContent ?? ""
+        e.currentTarget.innerHTML = linkify(text)
+        onSave(text)
+      }}
+      style={{ outline: "none", cursor: "text", ...style }}
+    />
+  )
+}
 
 // ── editable line (single-line contentEditable) ───────────────────────────────
 function EditLine({
@@ -97,14 +165,55 @@ function EditPara({
 // ── single row (editable label + project link + delete) ──────────────────────
 function RowEl({
   item, onDelete, onSave,
-}: { item: RowItem; onDelete: () => void; onSave: (v: string) => void }) {
+  dragging, dropBefore, onDragStart, onDragEnter, onDrop, onDragEnd,
+}: {
+  item: RowItem
+  onDelete: () => void
+  onSave: (v: string) => void
+  dragging: boolean
+  dropBefore: boolean
+  onDragStart: () => void
+  onDragEnter: () => void
+  onDrop: () => void
+  onDragEnd: () => void
+}) {
   const [hov, setHov] = useState(false)
+  // the row only becomes draggable once the grip is pressed, so the
+  // contentEditable label stays selectable with a normal click-drag
+  const [armed, setArmed] = useState(false)
+
   return (
     <div
+      draggable={armed}
+      onDragStart={e => { e.dataTransfer.effectAllowed = "move"; onDragStart() }}
+      onDragEnter={onDragEnter}
+      onDragOver={e => e.preventDefault()}
+      onDrop={e => { e.preventDefault(); onDrop() }}
+      onDragEnd={() => { setArmed(false); onDragEnd() }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #ebebeb", position: "relative" }}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "7px 0", position: "relative",
+        borderBottom: "1px solid #ebebeb",
+        borderTop: dropBefore ? "1px solid #999" : "1px solid transparent",
+        opacity: dragging ? 0.35 : 1,
+        transition: "opacity 0.12s",
+      }}
     >
+      <span
+        title="drag to reorder"
+        onMouseDown={() => setArmed(true)}
+        onMouseUp={() => setArmed(false)}
+        style={{
+          position: "absolute", left: -20,
+          opacity: hov ? 1 : 0, transition: "opacity 0.12s",
+          color: "#c4c4c4", fontSize: 12, cursor: "grab",
+          userSelect: "none", lineHeight: 1,
+        }}
+      >
+        ⠿
+      </span>
       <Link
         href={`/projects/${item.slug ?? slugify(item.label)}`}
         title="open"
@@ -134,16 +243,6 @@ function RowEl({
   )
 }
 
-// ── contact link style ────────────────────────────────────────────────────────
-const contactLink: React.CSSProperties = {
-  fontSize: 13,
-  color: "#222",
-  textDecoration: "none",
-  borderBottom: "1px solid #cfcdc7",
-  paddingBottom: 1,
-  letterSpacing: "0.01em",
-}
-
 // ── drift icon ────────────────────────────────────────────────────────────────
 function DriftIcon() {
   return (
@@ -159,12 +258,20 @@ function DriftIcon() {
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [data, setData] = useState<HomeData | null>(null)
+  // state drives the drop-indicator; the ref is the source of truth, because the
+  // drag handlers can all fire within one render and would read a stale `drag`
+  const [drag, setDrag] = useState<DragState>(null)
+  const dragRef = useRef<DragState>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      setData(raw ? JSON.parse(raw) : DEFAULT)
+      const saved: HomeData = raw ? JSON.parse(raw) : DEFAULT
+      // a bio saved before contact links existed has nothing to linkify — give it
+      // the sentence once, then leave it alone (it stays editable like any text)
+      if (!HAS_CONTACT.test(saved.bio)) saved.bio = saved.bio.trimEnd() + CONTACT_SENTENCE
+      setData(saved)
     } catch {
       setData(DEFAULT)
     }
@@ -192,6 +299,22 @@ export default function Home() {
       persist(next)
       return next
     })
+  }
+
+  const setBothDrag = (next: DragState | ((d: DragState) => DragState)) => {
+    setDrag(prev => {
+      const resolved = typeof next === "function" ? next(prev) : next
+      dragRef.current = resolved
+      return resolved
+    })
+  }
+
+  const commitDrag = () => {
+    const d = dragRef.current
+    setBothDrag(null)
+    if (!d || d.from === d.over) return
+    const sec = data?.sections[d.si]
+    if (sec) patchSection(d.si, { items: move(sec.items, d.from, d.over) })
   }
 
   if (!data) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
@@ -230,26 +353,11 @@ export default function Home() {
         />
 
         {/* ── bio ── */}
-        <EditPara
+        <EditRichPara
           initial={data.bio}
           onSave={v => patch({ bio: v })}
-          style={{ fontSize: 13, color: "#666", margin: "0 0 22px", lineHeight: 1.75, letterSpacing: "0.01em" }}
+          style={{ fontSize: 13, color: "#666", margin: "0 0 64px", lineHeight: 1.75, letterSpacing: "0.01em" }}
         />
-
-        {/* ── contact ── */}
-        <div style={{ display: "flex", gap: 18, margin: "0 0 64px" }}>
-          <a
-            href="https://www.linkedin.com/in/izzy-yingqi-shen-5558201b4/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={contactLink}
-          >
-            LinkedIn
-          </a>
-          <a href="mailto:izzy_shen@mde.harvard.edu" style={contactLink}>
-            Email
-          </a>
-        </div>
 
         {/* ── hours bar ── */}
         <div style={{ marginBottom: 48 }}>
@@ -293,6 +401,12 @@ export default function Home() {
               <RowEl
                 key={item.id}
                 item={item}
+                dragging={drag?.si === si && drag.from === ii}
+                dropBefore={drag?.si === si && drag.over === ii && drag.from !== ii}
+                onDragStart={() => setBothDrag({ si, from: ii, over: ii })}
+                onDragEnter={() => setBothDrag(d => (d && d.si === si ? { ...d, over: ii } : d))}
+                onDrop={commitDrag}
+                onDragEnd={() => setBothDrag(null)}
                 onDelete={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })}
                 onSave={label => {
                   const items = sec.items.map((it, j) => j === ii
