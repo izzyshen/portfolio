@@ -134,6 +134,16 @@ function RowEl({
   )
 }
 
+// ── contact link style ────────────────────────────────────────────────────────
+const contactLink: React.CSSProperties = {
+  fontSize: 13,
+  color: "#222",
+  textDecoration: "none",
+  borderBottom: "1px solid #cfcdc7",
+  paddingBottom: 1,
+  letterSpacing: "0.01em",
+}
+
 // ── drift icon ────────────────────────────────────────────────────────────────
 function DriftIcon() {
   return (
@@ -223,8 +233,23 @@ export default function Home() {
         <EditPara
           initial={data.bio}
           onSave={v => patch({ bio: v })}
-          style={{ fontSize: 13, color: "#666", margin: "0 0 64px", lineHeight: 1.75, letterSpacing: "0.01em" }}
+          style={{ fontSize: 13, color: "#666", margin: "0 0 22px", lineHeight: 1.75, letterSpacing: "0.01em" }}
         />
+
+        {/* ── contact ── */}
+        <div style={{ display: "flex", gap: 18, margin: "0 0 64px" }}>
+          <a
+            href="https://www.linkedin.com/in/izzy-yingqi-shen-5558201b4/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={contactLink}
+          >
+            LinkedIn
+          </a>
+          <a href="mailto:izzy_shen@mde.harvard.edu" style={contactLink}>
+            Email
+          </a>
+        </div>
 
         {/* ── hours bar ── */}
         <div style={{ marginBottom: 48 }}>
