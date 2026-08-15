@@ -39,6 +39,9 @@ interface ProjectContent {
   font: string
   coverSrc: string
   sections: Section[]
+  /** true once a one-time content seed (e.g. Graphite's demo clips) has run,
+   *  so it never reappears after someone deliberately deletes it */
+  seededDemo?: boolean
 }
 
 // ── defaults + migration ──────────────────────────────────────────────────────
@@ -66,10 +69,43 @@ function defaultContent(slug: string): ProjectContent {
   }
 }
 
+// ── one-time content seeds ──────────────────────────────────────────────────
+// Short clips cut from the raw Graphite demo recording, placed in the section
+// each moment actually illustrates. Runs once per browser (see seededDemo)
+// so deleting a clip later doesn't bring it back.
+const GRAPHITE_DEMO_BLOCKS: Record<string, { src: string; caption: string }[]> = {
+  "problem-defining": [
+    { src: "/graphite-clip-1-brief.mp4", caption: "Setting the creative brief" },
+  ],
+  "design-decision": [
+    { src: "/graphite-clip-2-curate.mp4", caption: "AI curates matching references" },
+  ],
+  "engineer-decision": [
+    { src: "/graphite-clip-3-arrange.mp4", caption: "Arranging the moodboard canvas" },
+    { src: "/graphite-clip-4-detail.mp4", caption: "Opening a reference for detail" },
+  ],
+  "prototype-outcome": [
+    { src: "/graphite-clip-5-reveal.mp4", caption: "The generated design playbook" },
+  ],
+}
+
+function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
+  if (slug !== "graphite" || content.seededDemo) return content
+  const sections = content.sections.map(s => {
+    const extra = GRAPHITE_DEMO_BLOCKS[s.id]
+    if (!extra) return s
+    const blocks: MediaBlock[] = extra.map((b, i) => ({
+      id: `seed-${s.id}-${i}`, type: "video", src: b.src, caption: b.caption,
+    }))
+    return { ...s, blocks: [...blocks, ...s.blocks] }
+  })
+  return { ...content, sections, seededDemo: true }
+}
+
 /** Accepts old-format saved content (top-level body/blocks) and upgrades it. */
 function normalize(raw: unknown, slug: string): ProjectContent {
   const base = defaultContent(slug)
-  if (!raw || typeof raw !== "object") return base
+  if (!raw || typeof raw !== "object") return seedDemoClips(base, slug)
   const r = raw as Record<string, unknown>
 
   const sections = Array.isArray(r.sections) && r.sections.length
@@ -82,13 +118,14 @@ function normalize(raw: unknown, slug: string): ProjectContent {
     if (Array.isArray(r.blocks) && r.blocks.length) sections[0].blocks = r.blocks as MediaBlock[]
   }
 
-  return {
+  return seedDemoClips({
     tag: typeof r.tag === "string" ? r.tag : base.tag,
     title: typeof r.title === "string" ? r.title : base.title,
     font: typeof r.font === "string" ? r.font : base.font,
     coverSrc: typeof r.coverSrc === "string" ? r.coverSrc : "",
     sections,
-  }
+    seededDemo: r.seededDemo === true,
+  }, slug)
 }
 
 /** Read the project list the landing page is actually showing. */
