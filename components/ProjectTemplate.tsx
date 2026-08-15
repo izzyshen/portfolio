@@ -252,7 +252,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
   const [content, setContent] = useState<ProjectContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     try {

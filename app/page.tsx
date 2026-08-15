@@ -149,7 +149,7 @@ function DriftIcon() {
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [data, setData] = useState<HomeData | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     try {
