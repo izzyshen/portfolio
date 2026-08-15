@@ -213,6 +213,12 @@ const overlayBtn: React.CSSProperties = {
 }
 
 // ── media block ───────────────────────────────────────────────────────────────
+/** true for youtube.com/youtu.be/vimeo.com links — everything else (a local
+ *  upload's data: URL, or a direct .mp4 link) plays via a native <video> tag. */
+function isEmbedUrl(url: string) {
+  return /(?:youtube\.com|youtu\.be|vimeo\.com)/.test(url)
+}
+
 function toEmbedUrl(url: string) {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`
@@ -229,7 +235,7 @@ function BlockView({
       {block.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={block.src} alt="" style={{ width: "100%", display: "block" }} />
-      ) : (
+      ) : isEmbedUrl(block.src) ? (
         <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden" }}>
           <iframe
             src={toEmbedUrl(block.src)}
@@ -238,6 +244,8 @@ function BlockView({
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
           />
         </div>
+      ) : (
+        <video src={block.src} controls style={{ width: "100%", display: "block", background: "#000" }} />
       )}
       <EditLine
         initial={block.caption || "Caption…"}
@@ -258,27 +266,49 @@ const btnStyle: React.CSSProperties = {
   padding: "5px 12px", cursor: "pointer",
 }
 
+// videos are stored as base64 in localStorage (same as images) — the browser's
+// per-origin quota is typically 5-10MB total, so a big upload can silently fail
+// to persist. Warn early rather than let someone lose an edit without knowing why.
+const VIDEO_WARN_BYTES = 15 * 1024 * 1024
+
 function AddRow({
   onAddImage, onAddVideo,
 }: { onAddImage: (s: string) => void; onAddVideo: (u: string) => void }) {
   const imgRef = useRef<HTMLInputElement>(null)
+  const videoFileRef = useRef<HTMLInputElement>(null)
   const [videoMode, setVideoMode] = useState(false)
   const [url, setUrl] = useState("")
 
-  const readFile = (f: File) => {
+  const readFile = (f: File, onDone: (dataUrl: string) => void) => {
     const r = new FileReader()
-    r.onload = () => onAddImage(r.result as string)
+    r.onload = () => onDone(r.result as string)
     r.readAsDataURL(f)
+  }
+
+  const readVideoFile = (f: File) => {
+    if (f.size > VIDEO_WARN_BYTES) {
+      const mb = (f.size / (1024 * 1024)).toFixed(1)
+      const proceed = window.confirm(
+        `This video is ${mb}MB. Large videos can exceed the browser's local storage limit and fail to save. Continue anyway?`
+      )
+      if (!proceed) return
+    }
+    readFile(f, onAddVideo)
   }
 
   return (
     <div style={{ marginTop: 14 }}>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={() => imgRef.current?.click()} style={btnStyle}>+ IMAGE</button>
-        <button onClick={() => setVideoMode(v => !v)} style={btnStyle}>+ VIDEO</button>
+        <button onClick={() => videoFileRef.current?.click()} style={btnStyle}>+ VIDEO FILE</button>
+        <button onClick={() => setVideoMode(v => !v)} style={btnStyle}>+ VIDEO URL</button>
         <input
           ref={imgRef} type="file" accept="image/*" style={{ display: "none" }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f) }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f, onAddImage); e.target.value = "" }}
+        />
+        <input
+          ref={videoFileRef} type="file" accept="video/*" style={{ display: "none" }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) readVideoFile(f); e.target.value = "" }}
         />
       </div>
       {videoMode && (
@@ -361,6 +391,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
   const [content, setContent] = useState<ProjectContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
@@ -375,9 +406,15 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const persist = (next: ProjectContent) => {
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      localStorage.setItem(storageKey, JSON.stringify(next))
-      setSavedMsg(true)
-      setTimeout(() => setSavedMsg(false), 1200)
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next))
+        setSaveError(false)
+        setSavedMsg(true)
+        setTimeout(() => setSavedMsg(false), 1200)
+      } catch {
+        // most likely QuotaExceededError from a large video's base64 payload
+        setSaveError(true)
+      }
     }, 500)
   }
 
@@ -484,6 +521,16 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       {savedMsg && (
         <div style={{ position: "fixed", bottom: 28, right: 32, color: "#c4c2bc", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
           SAVED
+        </div>
+      )}
+      {saveError && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 32, maxWidth: 260,
+          color: "#a15c4a", fontSize: 10, letterSpacing: "0.04em",
+          background: "#fbf1ee", border: "1px solid #eeded9",
+          padding: "8px 12px", pointerEvents: "none",
+        }}>
+          Couldn&apos;t save — local storage is full. Try a smaller or shorter video.
         </div>
       )}
     </main>
