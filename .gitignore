@@ -17,3 +17,5 @@ next-env.d.ts
 
 # preview
 preview.html
+.vercel
+package-lock.json
