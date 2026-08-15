@@ -264,6 +264,68 @@ function toEmbedUrl(url: string) {
   return url
 }
 
+/** Plays like a GIF: muted, looping, no controls — starts on hover (or tap on
+ *  touch devices, since there's no hover event there) and resets when it ends. */
+function HoverVideo({ src }: { src: string }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const [hover, setHover] = useState(false)
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    if (hover) {
+      v.currentTime = 0
+      v.play().catch(() => {}) // autoplay can reject before the element is ready; harmless
+    } else {
+      v.pause()
+      v.currentTime = 0
+    }
+  }, [hover])
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => setHover(h => !h)}
+      style={{ position: "relative", cursor: "pointer", border: "1px solid #e2e1dc" }}
+    >
+      <video
+        ref={ref}
+        src={src}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        style={{ width: "100%", display: "block", background: "#000" }}
+      />
+      {/* dims the (often pale) first frame so the box always reads as media,
+       *  and gives the hover affordance somewhere to sit */}
+      <div
+        style={{
+          position: "absolute", inset: 0,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
+          background: "rgba(0,0,0,0.28)",
+          opacity: hover ? 0 : 1, transition: "opacity 0.15s",
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%",
+          border: "1px solid rgba(255,255,255,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", fontSize: 13, paddingLeft: 2,
+        }}>
+          ▶
+        </div>
+        <span style={{ color: "#fff", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+          Hover to preview
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function BlockView({
   block, onDelete, onCaptionSave,
 }: { block: MediaBlock; onDelete: () => void; onCaptionSave: (c: string) => void }) {
@@ -282,7 +344,7 @@ function BlockView({
           />
         </div>
       ) : (
-        <video src={block.src} controls style={{ width: "100%", display: "block", background: "#000" }} />
+        <HoverVideo src={block.src} />
       )}
       <EditLine
         initial={block.caption || "Caption…"}
