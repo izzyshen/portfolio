@@ -10,7 +10,6 @@
   "dependencies": {
     "gsap": "^3.12.5",
     "lightningcss": "^1.33.0",
-    "lightningcss-darwin-arm64": "^1.33.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
