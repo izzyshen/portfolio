@@ -1036,10 +1036,16 @@ function useBlockDrag(
     const scroller = setInterval(() => {
       if (!draggingRef.current) return
       const h = window.innerHeight
+      if (!h) return
       let dy = 0
       if (pointerY < EDGE) dy = -MAX_SPEED * (1 - pointerY / EDGE)
       else if (pointerY > h - EDGE) dy = MAX_SPEED * (1 - (h - pointerY) / EDGE)
       if (!dy) return
+      // the proportional term passes 1 once the pointer goes beyond the edge
+      // (dragging toward the very top/bottom, or off the window entirely), and
+      // unclamped that scrolls the page hundreds of pixels per tick — fast
+      // enough to yank the drop target out from under the cursor
+      dy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, dy))
       const before = window.scrollY
       window.scrollBy(0, dy)
       if (window.scrollY !== before) updateTarget(pointerX, pointerY)
@@ -1382,9 +1388,19 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       const read = (c: string): MediaBlock[] =>
         c === HERO_CONTAINER ? (prev.heroBlocks ?? []) : (prev.sections[Number(c)]?.blocks ?? [])
 
-      const source = [...read(from)]
-      const idx = source.findIndex(b => b.id === blockId)
+      const original = read(from)
+      const idx = original.findIndex(b => b.id === blockId)
       if (idx === -1) return prev
+
+      // Index of the drop target measured BEFORE the dragged block is pulled
+      // out. Computing it afterwards shifts every position past the removal by
+      // one, which silently turned a drop onto the next block into a no-op.
+      const targetList = from === to ? original : read(to)
+      const at = beforeBlockId
+        ? targetList.findIndex(b => b.id === beforeBlockId)
+        : targetList.length
+
+      const source = [...original]
       let [moved] = source.splice(idx, 1)
 
       const sameContainer = from === to
@@ -1401,7 +1417,6 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       }
 
       const destination = sameContainer ? source : [...read(to)]
-      const at = beforeBlockId ? destination.findIndex(b => b.id === beforeBlockId) : -1
       destination.splice(at === -1 ? destination.length : at, 0, moved)
 
       pushUndo(prev)
