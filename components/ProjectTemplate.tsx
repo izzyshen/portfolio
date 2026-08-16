@@ -94,7 +94,11 @@ const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: s
 }
 
 function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
-  if (slug !== "graphite") return content
+  // matches "graphite" and any older/renamed variant like
+  // "graphite-build-taste-with-ai" from back when editing a project's label
+  // also regenerated its slug (fixed on the landing page, but existing
+  // browsers may already have the renamed slug saved)
+  if (slug !== "graphite" && !slug.startsWith("graphite-")) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
   const sections = content.sections.map(s => {
     const wanted = GRAPHITE_DEMO_BLOCKS[s.id]

@@ -414,8 +414,12 @@ export default function Home() {
                 onDragEnd={() => setBothDrag(null)}
                 onDelete={() => patchSection(si, { items: sec.items.filter((_, j) => j !== ii) })}
                 onSave={label => {
+                  // slug is assigned once (here, on first-ever edit if the item
+                  // didn't already have one) and never regenerated after that —
+                  // otherwise every rename would silently change the item's URL
+                  // and storage key, orphaning whatever was written there before
                   const items = sec.items.map((it, j) => j === ii
-                    ? { ...it, label, slug: slugify(label) }
+                    ? { ...it, label, slug: it.slug ?? slugify(label) }
                     : it)
                   patchSection(si, { items })
                 }}
