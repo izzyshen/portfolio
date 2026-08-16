@@ -501,12 +501,22 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey)
-      setContent(normalize(raw ? JSON.parse(raw) : null, slug))
-    } catch {
-      setContent(defaultContent(slug))
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(storageKey)
+        setContent(normalize(raw ? JSON.parse(raw) : null, slug))
+      } catch {
+        setContent(defaultContent(slug))
+      }
     }
+    load()
+    // Safari/Chrome can restore this page from the back-forward cache on a
+    // "back" navigation without re-running React — that frozen snapshot can
+    // predate this load, or predate a clip that got seeded since. Re-sync
+    // from storage whenever that happens so it never looks stale.
+    const onPageShow = (e: PageTransitionEvent) => { if (e.persisted) load() }
+    window.addEventListener("pageshow", onPageShow)
+    return () => window.removeEventListener("pageshow", onPageShow)
   }, [storageKey, slug])
 
   const persist = (next: ProjectContent) => {

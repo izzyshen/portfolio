@@ -301,12 +301,19 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey)
-      setContent(normalize(raw ? JSON.parse(raw) : null, slug))
-    } catch {
-      setContent(defaultContent(slug))
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(storageKey)
+        setContent(normalize(raw ? JSON.parse(raw) : null, slug))
+      } catch {
+        setContent(defaultContent(slug))
+      }
     }
+    load()
+    // re-sync after a back-forward-cache restore (see ProjectTemplate for why)
+    const onPageShow = (e: PageTransitionEvent) => { if (e.persisted) load() }
+    window.addEventListener("pageshow", onPageShow)
+    return () => window.removeEventListener("pageshow", onPageShow)
   }, [storageKey, slug])
 
   const persist = (next: CompareContent) => {
