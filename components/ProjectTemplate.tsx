@@ -39,9 +39,11 @@ interface ProjectContent {
   font: string
   coverSrc: string
   sections: Section[]
-  /** true once a one-time content seed (e.g. Graphite's demo clips) has run,
-   *  so it never reappears after someone deliberately deletes it */
-  seededDemo?: boolean
+  /** ids of seed blocks (e.g. Graphite's demo clips) someone deliberately
+   *  deleted — tracked per-clip so an unrelated edit elsewhere, a storage
+   *  reset, or a fresh browser can never lose one that wasn't actually
+   *  removed on purpose. Anything not listed here gets re-added if missing. */
+  dismissedSeeds?: string[]
 }
 
 // ── defaults + migration ──────────────────────────────────────────────────────
@@ -69,37 +71,42 @@ function defaultContent(slug: string): ProjectContent {
   }
 }
 
-// ── one-time content seeds ──────────────────────────────────────────────────
+// ── content seeds ─────────────────────────────────────────────────────────
 // Short clips cut from the raw Graphite demo recording, placed in the section
-// each moment actually illustrates. Runs once per browser (see seededDemo)
-// so deleting a clip later doesn't bring it back.
-const GRAPHITE_DEMO_BLOCKS: Record<string, { src: string; caption: string }[]> = {
+// each moment actually illustrates. Re-checked on every load: any clip that's
+// missing (fresh browser, storage got reset, wasn't there before this feature
+// shipped) is added back, unless its id is in dismissedSeeds — i.e. someone
+// clicked its own ✕ on purpose. That's the only way a clip stays gone.
+const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
   "problem-defining": [
-    { src: "/graphite-clip-1-brief.mp4", caption: "Setting the creative brief" },
+    { id: "seed-problem-defining-0", src: "/graphite-clip-1-brief.mp4", caption: "Setting the creative brief" },
   ],
   "design-decision": [
-    { src: "/graphite-clip-2-curate.mp4", caption: "AI curates matching references" },
+    { id: "seed-design-decision-0", src: "/graphite-clip-2-curate.mp4", caption: "AI curates matching references" },
   ],
   "engineer-decision": [
-    { src: "/graphite-clip-3-arrange.mp4", caption: "Arranging the moodboard canvas" },
-    { src: "/graphite-clip-4-detail.mp4", caption: "Opening a reference for detail" },
+    { id: "seed-engineer-decision-0", src: "/graphite-clip-3-arrange.mp4", caption: "Arranging the moodboard canvas" },
+    { id: "seed-engineer-decision-1", src: "/graphite-clip-4-detail.mp4", caption: "Opening a reference for detail" },
   ],
   "prototype-outcome": [
-    { src: "/graphite-clip-5-reveal.mp4", caption: "The generated design playbook" },
+    { id: "seed-prototype-outcome-0", src: "/graphite-clip-5-reveal.mp4", caption: "The generated design playbook" },
   ],
 }
 
 function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
-  if (slug !== "graphite" || content.seededDemo) return content
+  if (slug !== "graphite") return content
+  const dismissed = new Set(content.dismissedSeeds ?? [])
   const sections = content.sections.map(s => {
-    const extra = GRAPHITE_DEMO_BLOCKS[s.id]
-    if (!extra) return s
-    const blocks: MediaBlock[] = extra.map((b, i) => ({
-      id: `seed-${s.id}-${i}`, type: "video", src: b.src, caption: b.caption,
-    }))
-    return { ...s, blocks: [...blocks, ...s.blocks] }
+    const wanted = GRAPHITE_DEMO_BLOCKS[s.id]
+    if (!wanted) return s
+    const present = new Set(s.blocks.map(b => b.id))
+    const missing: MediaBlock[] = wanted
+      .filter(b => !dismissed.has(b.id) && !present.has(b.id))
+      .map(b => ({ id: b.id, type: "video", src: b.src, caption: b.caption }))
+    if (!missing.length) return s
+    return { ...s, blocks: [...missing, ...s.blocks] }
   })
-  return { ...content, sections, seededDemo: true }
+  return { ...content, sections }
 }
 
 /** Accepts old-format saved content (top-level body/blocks) and upgrades it. */
@@ -124,7 +131,7 @@ function normalize(raw: unknown, slug: string): ProjectContent {
     font: typeof r.font === "string" ? r.font : base.font,
     coverSrc: typeof r.coverSrc === "string" ? r.coverSrc : "",
     sections,
-    seededDemo: r.seededDemo === true,
+    dismissedSeeds: Array.isArray(r.dismissedSeeds) ? (r.dismissedSeeds as string[]) : [],
   }, slug)
 }
 
@@ -536,6 +543,23 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     })
   }
 
+  // deleting a seeded clip (id starts with "seed-") records it as dismissed so
+  // seedDemoClips won't re-add just that one; deleting anything else is unaffected
+  const deleteBlock = (si: number, block: MediaBlock) => {
+    setContent(prev => {
+      if (!prev) return prev
+      const sections = prev.sections.map((s, i) =>
+        i === si ? { ...s, blocks: s.blocks.filter(b => b.id !== block.id) } : s
+      )
+      const dismissedSeeds = block.id.startsWith("seed-")
+        ? [...(prev.dismissedSeeds ?? []), block.id]
+        : prev.dismissedSeeds
+      const next = { ...prev, sections, dismissedSeeds }
+      persist(next)
+      return next
+    })
+  }
+
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
   return (
@@ -598,7 +622,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
                 <BlockView
                   key={block.id}
                   block={block}
-                  onDelete={() => patchSection(si, { blocks: sec.blocks.filter((_, j) => j !== bi) })}
+                  onDelete={() => deleteBlock(si, block)}
                   onCaptionSave={cap =>
                     patchSection(si, { blocks: sec.blocks.map((b, j) => j === bi ? { ...b, caption: cap } : b) })
                   }
