@@ -726,7 +726,18 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const [content, setContent] = useState<ProjectContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [saveError, setSaveError] = useState(false)
+  const [undoneMsg, setUndoneMsg] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Cmd/Ctrl+Z undo history — every change (edits, deletions, everything)
+  // pushes the PRE-change snapshot here first, so undo always has somewhere
+  // to go back to. Capped so it can't grow unbounded in a long session.
+  const UNDO_LIMIT = 50
+  const undoStack = useRef<ProjectContent[]>([])
+  const pushUndo = (snapshot: ProjectContent) => {
+    undoStack.current.push(snapshot)
+    if (undoStack.current.length > UNDO_LIMIT) undoStack.current.shift()
+  }
 
   useEffect(() => {
     const load = () => {
@@ -769,6 +780,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const patch = (updates: Partial<ProjectContent>) => {
     setContent(prev => {
       if (!prev) return prev
+      pushUndo(prev)
       const next = { ...prev, ...updates }
       persist(next)
       return next
@@ -778,6 +790,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const patchSection = (si: number, up: Partial<Section>) => {
     setContent(prev => {
       if (!prev) return prev
+      pushUndo(prev)
       const sections = prev.sections.map((s, i) => i === si ? { ...s, ...up } : s)
       const next = { ...prev, sections }
       persist(next)
@@ -790,6 +803,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const deleteBlock = (si: number, block: MediaBlock) => {
     setContent(prev => {
       if (!prev) return prev
+      pushUndo(prev)
       const sections = prev.sections.map((s, i) =>
         i === si ? { ...s, blocks: s.blocks.filter(b => b.id !== block.id) } : s
       )
@@ -801,6 +815,29 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       return next
     })
   }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
+      if (!isUndo) return
+      // typing inside a text field: let the browser's own native undo run
+      // (undoing a keystroke, not rolling back the whole page's content)
+      const active = document.activeElement
+      const isEditingText = active instanceof HTMLElement &&
+        (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")
+      if (isEditingText) return
+
+      if (undoStack.current.length === 0) return
+      e.preventDefault()
+      const restored = undoStack.current.pop()!
+      setContent(restored)
+      persist(restored)
+      setUndoneMsg(true)
+      setTimeout(() => setUndoneMsg(false), 1200)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
@@ -889,6 +926,11 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
           padding: "8px 12px", pointerEvents: "none",
         }}>
           Couldn&apos;t save — local storage is full. Try a smaller or shorter video.
+        </div>
+      )}
+      {undoneMsg && (
+        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#a08c5c", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+          UNDONE — ⌘Z AGAIN FOR MORE
         </div>
       )}
     </main>

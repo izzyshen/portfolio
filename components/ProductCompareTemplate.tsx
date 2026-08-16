@@ -440,7 +440,18 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
   const [content, setContent] = useState<CompareContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [undoneMsg, setUndoneMsg] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Cmd/Ctrl+Z undo history — every change (edits, deletions, everything)
+  // pushes the PRE-change snapshot here first, so undo always has somewhere
+  // to go back to. Capped so it can't grow unbounded in a long session.
+  const UNDO_LIMIT = 50
+  const undoStack = useRef<CompareContent[]>([])
+  const pushUndo = (snapshot: CompareContent) => {
+    undoStack.current.push(snapshot)
+    if (undoStack.current.length > UNDO_LIMIT) undoStack.current.shift()
+  }
 
   useEffect(() => {
     const load = () => {
@@ -470,6 +481,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const patch = (updates: Partial<CompareContent>) => {
     setContent(prev => {
       if (!prev) return prev
+      pushUndo(prev)
       const next = { ...prev, ...updates }
       persist(next)
       return next
@@ -481,6 +493,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const patchColumn = (index: 0 | 1, column: Column) => {
     setContent(prev => {
       if (!prev) return prev
+      pushUndo(prev)
       const columns: [Column, Column] = [...prev.columns]
       columns[index] = column
       const next = { ...prev, columns }
@@ -488,6 +501,29 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
       return next
     })
   }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
+      if (!isUndo) return
+      // typing inside a text field: let the browser's own native undo run
+      // (undoing a keystroke, not rolling back the whole page's content)
+      const active = document.activeElement
+      const isEditingText = active instanceof HTMLElement &&
+        (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")
+      if (isEditingText) return
+
+      if (undoStack.current.length === 0) return
+      e.preventDefault()
+      const restored = undoStack.current.pop()!
+      setContent(restored)
+      persist(restored)
+      setUndoneMsg(true)
+      setTimeout(() => setUndoneMsg(false), 1200)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
@@ -554,6 +590,11 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
       {savedMsg && (
         <div style={{ position: "fixed", bottom: 28, right: 32, color: "#c4c2bc", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
           SAVED
+        </div>
+      )}
+      {undoneMsg && (
+        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#a08c5c", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+          UNDONE — ⌘Z AGAIN FOR MORE
         </div>
       )}
     </main>
