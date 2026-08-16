@@ -939,78 +939,170 @@ function AddRow({
   )
 }
 
+// ── cross-section drag ───────────────────────────────────────────────────────
+/** Which list a block lives in: the hero strip, or a section by index. */
+const HERO_CONTAINER = "hero"
+
+interface DragOrigin { blockId: string; from: string }
+/** Where a drop would land. `blockId: null` means "past the last block in this
+ *  container", i.e. append — which is also how an empty section is targeted. */
+interface DropTarget { container: string; blockId: string | null }
+
+/**
+ * Owns dragging for the whole page rather than per-section, so a block picked
+ * up in one section can be dropped into another. Hit-testing walks every
+ * block/container rect in the document instead of asking what's topmost at the
+ * cursor, so overlaying media (videos, embeds) can't intercept the drop.
+ *
+ * Pointer events rather than native HTML5 drag-and-drop: `draggable="true"`
+ * needs the browser to recognize an OS-level drag, which is unreliable on
+ * trackpads and absent on touch.
+ */
+function useBlockDrag(
+  onMove: (from: string, blockId: string, to: string, beforeBlockId: string | null) => void,
+) {
+  const [dragging, setDragging] = useState<DragOrigin | null>(null)
+  const [target, setTarget] = useState<DropTarget | null>(null)
+  const draggingRef = useRef<DragOrigin | null>(null)
+  const targetRef = useRef<DropTarget | null>(null)
+  // keeps the latest callback reachable without re-subscribing listeners on
+  // every parent re-render (which an inline arrow prop causes constantly)
+  const onMoveRef = useRef(onMove)
+  onMoveRef.current = onMove
+
+  const start = (blockId: string, from: string) => {
+    const origin = { blockId, from }
+    draggingRef.current = origin
+    setDragging(origin)
+  }
+
+  useEffect(() => {
+    if (!dragging) return
+
+    const inside = (r: DOMRect, x: number, y: number) =>
+      y >= r.top && y <= r.bottom && x >= r.left && x <= r.right
+
+    /** Recomputed from the last pointer position rather than the event, so
+     *  auto-scrolling (where the cursor is still but the page moves under it)
+     *  keeps the highlighted target honest. */
+    const updateTarget = (x: number, y: number) => {
+      const dragged = draggingRef.current
+      if (!dragged) return
+      let hit: DropTarget | null = null
+
+      // a block under the cursor wins — the dragged block lands at its index
+      for (const el of document.querySelectorAll<HTMLElement>("[data-block-id]")) {
+        const id = el.getAttribute("data-block-id")
+        if (!id || id === dragged.blockId) continue
+        if (!inside(el.getBoundingClientRect(), x, y)) continue
+        const containerId = el
+          .closest<HTMLElement>("[data-container-id]")
+          ?.getAttribute("data-container-id")
+        if (containerId) { hit = { container: containerId, blockId: id }; break }
+      }
+
+      // otherwise fall back to whichever container the cursor is inside, so
+      // dropping onto a section's empty space appends to it
+      if (!hit) {
+        for (const el of document.querySelectorAll<HTMLElement>("[data-container-id]")) {
+          if (!inside(el.getBoundingClientRect(), x, y)) continue
+          hit = { container: el.getAttribute("data-container-id")!, blockId: null }
+          break
+        }
+      }
+
+      targetRef.current = hit
+      setTarget(hit)
+    }
+
+    let pointerX = 0
+    let pointerY = 0
+    const onPointerMove = (e: PointerEvent) => {
+      pointerX = e.clientX
+      pointerY = e.clientY
+      updateTarget(pointerX, pointerY)
+    }
+
+    // Media blocks are tall enough that the section you're aiming for is
+    // usually off-screen when you pick something up, and a held pointer
+    // generates no scroll of its own — without this, dragging between
+    // sections simply can't reach its destination.
+    const EDGE = 110
+    const MAX_SPEED = 22
+    // a timer rather than requestAnimationFrame: rAF is suspended whenever the
+    // document isn't being painted, which silently freezes the scroll instead
+    // of just slowing it. 16ms tracks the frame rate closely enough that the
+    // motion still reads as smooth.
+    const scroller = setInterval(() => {
+      if (!draggingRef.current) return
+      const h = window.innerHeight
+      let dy = 0
+      if (pointerY < EDGE) dy = -MAX_SPEED * (1 - pointerY / EDGE)
+      else if (pointerY > h - EDGE) dy = MAX_SPEED * (1 - (h - pointerY) / EDGE)
+      if (!dy) return
+      const before = window.scrollY
+      window.scrollBy(0, dy)
+      if (window.scrollY !== before) updateTarget(pointerX, pointerY)
+    }, 16)
+
+    const finish = () => {
+      const dragged = draggingRef.current
+      const drop = targetRef.current
+      if (dragged && drop && !(drop.container === dragged.from && drop.blockId === dragged.blockId)) {
+        onMoveRef.current(dragged.from, dragged.blockId, drop.container, drop.blockId)
+      }
+      draggingRef.current = null
+      targetRef.current = null
+      setDragging(null)
+      setTarget(null)
+    }
+
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerup", finish)
+    window.addEventListener("pointercancel", finish)
+    return () => {
+      clearInterval(scroller)
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerup", finish)
+      window.removeEventListener("pointercancel", finish)
+    }
+  }, [dragging])
+
+  return { dragging, target, start }
+}
+
+type BlockDrag = ReturnType<typeof useBlockDrag>
+
 /** Wraps a section's media blocks + AddRow, revealing the add-buttons only
  *  while the cursor is anywhere over this area — keeps the page clean when
  *  just viewing, without losing the ability to add more later. */
 function SectionMedia({
-  blocks, onDeleteBlock, onCaptionSave, onAddImage, onAddVideo, onReorder,
+  containerId, blocks, drag, onDeleteBlock, onCaptionSave, onAddImage, onAddVideo,
 }: {
+  containerId: string
   blocks: MediaBlock[]
+  drag: BlockDrag
   onDeleteBlock: (block: MediaBlock) => void
   onCaptionSave: (block: MediaBlock, caption: string) => void
   onAddImage: (src: string) => void
   onAddVideo: (url: string) => void
-  onReorder: (fromId: string, toId: string) => void
 }) {
   const [hover, setHover] = useState(false)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [overId, setOverId] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const draggingIdRef = useRef<string | null>(null)
-  const overIdRef = useRef<string | null>(null)
-
-  // Pointer-based reorder instead of native HTML5 drag-and-drop: native
-  // draggable="true" needs the browser to recognize a real OS-level drag
-  // gesture, which is unreliable on trackpads and doesn't work on touch at
-  // all. Plain pointer events (down/move/up) behave the same across mouse,
-  // trackpad, and touch, and we do our own hit-testing by comparing the
-  // pointer's Y position against each block's measured rect — no dependency
-  // on which element happens to be topmost at that point.
-  useEffect(() => {
-    if (!draggingId) return
-
-    const onMove = (e: PointerEvent) => {
-      const container = containerRef.current
-      if (!container) return
-      const items = container.querySelectorAll<HTMLElement>("[data-block-id]")
-      let hit: string | null = null
-      for (const el of items) {
-        const id = el.getAttribute("data-block-id")
-        if (id === draggingIdRef.current) continue
-        const r = el.getBoundingClientRect()
-        if (e.clientY >= r.top && e.clientY <= r.bottom) { hit = id; break }
-      }
-      overIdRef.current = hit
-      setOverId(hit)
-    }
-
-    const finish = () => {
-      const from = draggingIdRef.current
-      const to = overIdRef.current
-      if (from && to && from !== to) onReorder(from, to)
-      draggingIdRef.current = null
-      overIdRef.current = null
-      setDraggingId(null)
-      setOverId(null)
-    }
-
-    window.addEventListener("pointermove", onMove)
-    window.addEventListener("pointerup", finish)
-    window.addEventListener("pointercancel", finish)
-    return () => {
-      window.removeEventListener("pointermove", onMove)
-      window.removeEventListener("pointerup", finish)
-      window.removeEventListener("pointercancel", finish)
-    }
-    // onReorder is stable per-render from the parent's map callback; re-running
-    // this effect on every keystroke elsewhere would just churn listeners
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggingId])
+  const isDragActive = drag.dragging !== null
+  const isAppendTarget =
+    drag.target?.container === containerId && drag.target.blockId === null
 
   return (
     <div
-      ref={containerRef}
-      style={{ marginTop: 20 }}
+      data-container-id={containerId}
+      style={{
+        marginTop: 20,
+        // while a drag is in flight every container needs enough area to be
+        // aimed at, otherwise a section holding nothing is nearly unhittable
+        minHeight: isDragActive ? 56 : undefined,
+        outline: isAppendTarget ? "2px dashed #b6b4ae" : "none",
+        outlineOffset: 6,
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -1020,16 +1112,20 @@ function SectionMedia({
           block={block}
           onDelete={() => onDeleteBlock(block)}
           onCaptionSave={cap => onCaptionSave(block, cap)}
-          isDragging={draggingId === block.id}
-          isDropTarget={overId === block.id && draggingId !== null && draggingId !== block.id}
+          isDragging={drag.dragging?.blockId === block.id}
+          isDropTarget={
+            drag.target?.container === containerId &&
+            drag.target.blockId === block.id &&
+            drag.dragging !== null &&
+            drag.dragging.blockId !== block.id
+          }
           onHandlePointerDown={e => {
             e.preventDefault()
-            draggingIdRef.current = block.id
-            setDraggingId(block.id)
+            drag.start(block.id, containerId)
           }}
         />
       ))}
-      <AddRow visible={hover} onAddImage={onAddImage} onAddVideo={onAddVideo} />
+      <AddRow visible={hover && !isDragActive} onAddImage={onAddImage} onAddVideo={onAddVideo} />
     </div>
   )
 }
@@ -1258,23 +1354,6 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     })
   }
 
-  const reorderHeroBlock = (fromId: string, toId: string) => {
-    setContent(prev => {
-      if (!prev) return prev
-      const current = prev.heroBlocks ?? []
-      const from = current.findIndex(b => b.id === fromId)
-      const to = current.findIndex(b => b.id === toId)
-      if (from === -1 || to === -1) return prev
-      pushUndo(prev)
-      const heroBlocks = [...current]
-      const [moved] = heroBlocks.splice(from, 1)
-      heroBlocks.splice(to, 0, moved)
-      const next = { ...prev, heroBlocks }
-      persist(next)
-      return next
-    })
-  }
-
   // deleting a seeded clip (id starts with "seed-") records it as dismissed so
   // seedDemoClips won't re-add just that one; deleting anything else is unaffected
   const deleteBlock = (si: number, block: MediaBlock) => {
@@ -1293,26 +1372,55 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     })
   }
 
-  // moves the dragged block to sit right where the drop-target block is
-  const reorderBlock = (si: number, fromId: string, toId: string) => {
+  /** Moves a block within its own list or across to another section/the hero
+   *  strip. `beforeBlockId` is the block it should land in front of, or null
+   *  to append to the end of the destination. */
+  const moveBlock = (from: string, blockId: string, to: string, beforeBlockId: string | null) => {
     setContent(prev => {
       if (!prev) return prev
+
+      const read = (c: string): MediaBlock[] =>
+        c === HERO_CONTAINER ? (prev.heroBlocks ?? []) : (prev.sections[Number(c)]?.blocks ?? [])
+
+      const source = [...read(from)]
+      const idx = source.findIndex(b => b.id === blockId)
+      if (idx === -1) return prev
+      let [moved] = source.splice(idx, 1)
+
+      const sameContainer = from === to
+      let dismissedSeeds = prev.dismissedSeeds ?? []
+
+      // A seeded clip is re-added to — and only kept in — the section its seed
+      // set declares, so carrying one into a different section would see it
+      // deleted there and reinstated back here on the next load. Promote it to
+      // an ordinary block (fresh id) and mark the seed dismissed, so the move
+      // is permanent and nothing reappears.
+      if (!sameContainer && moved.id.startsWith("seed-")) {
+        dismissedSeeds = [...dismissedSeeds, moved.id]
+        moved = { ...moved, id: `moved-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
+      }
+
+      const destination = sameContainer ? source : [...read(to)]
+      const at = beforeBlockId ? destination.findIndex(b => b.id === beforeBlockId) : -1
+      destination.splice(at === -1 ? destination.length : at, 0, moved)
+
       pushUndo(prev)
-      const sections = prev.sections.map((s, i) => {
-        if (i !== si) return s
-        const from = s.blocks.findIndex(b => b.id === fromId)
-        const to = s.blocks.findIndex(b => b.id === toId)
-        if (from === -1 || to === -1) return s
-        const blocks = [...s.blocks]
-        const [moved] = blocks.splice(from, 1)
-        blocks.splice(to, 0, moved)
-        return { ...s, blocks }
-      })
-      const next = { ...prev, sections }
+      let heroBlocks = prev.heroBlocks ?? []
+      let sections = prev.sections
+      const write = (c: string, list: MediaBlock[]) => {
+        if (c === HERO_CONTAINER) heroBlocks = list
+        else sections = sections.map((s, i) => (i === Number(c) ? { ...s, blocks: list } : s))
+      }
+      write(from, source)
+      if (!sameContainer) write(to, destination)
+
+      const next = { ...prev, heroBlocks, sections, dismissedSeeds }
       persist(next)
       return next
     })
   }
+
+  const drag = useBlockDrag(moveBlock)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1389,7 +1497,8 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
             onAddVideo={url =>
               patchHero([...(content.heroBlocks ?? []), { id: `${Date.now()}`, type: "video", src: url, caption: "" }])
             }
-            onReorder={reorderHeroBlock}
+            containerId={HERO_CONTAINER}
+            drag={drag}
           />
         </div>
 
@@ -1424,7 +1533,8 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
               onAddVideo={url =>
                 patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "video", src: url, caption: "" }] })
               }
-              onReorder={(fromId, toId) => reorderBlock(si, fromId, toId)}
+              containerId={String(si)}
+              drag={drag}
             />
           </section>
         ))}
