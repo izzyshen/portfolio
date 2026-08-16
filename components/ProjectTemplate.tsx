@@ -190,6 +190,179 @@ function EditLine({
   )
 }
 
+// ── text formatting (light / bold / italic / underline / size) ───────────────
+// Applied by wrapping the current selection in a <span style="...">, toggled
+// off again if the selection is already exactly wrapped by a matching span —
+// so clicking the same button twice undoes it, same as any rich text editor.
+const LIGHT_COLOR = "#999999"
+const BOLD_COLOR = "#111111"
+
+function commonAncestorElement(range: Range): HTMLElement | null {
+  let node: Node | null = range.commonAncestorContainer
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement
+  return node as HTMLElement | null
+}
+
+// the browser normalizes style values on write (e.g. "#111111" -> "rgb(17, 17,
+// 17)"), so comparing a raw target string against a live element's computed
+// value never matches — run the target through the same normalization first
+function normalizedStyleValue(prop: string, value: string): string {
+  const probe = document.createElement("span")
+  probe.style.setProperty(prop, value)
+  return probe.style.getPropertyValue(prop)
+}
+
+function toggleSpanStyle(container: HTMLElement, styles: Record<string, string>) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+  const range = sel.getRangeAt(0)
+  if (!container.contains(range.commonAncestorContainer)) return
+
+  const el = commonAncestorElement(range)
+  const alreadyApplied = !!el && el.tagName === "SPAN" && el.textContent === range.toString()
+    && Object.entries(styles).every(([k, v]) => el.style.getPropertyValue(k) === normalizedStyleValue(k, v))
+
+  if (alreadyApplied && el) {
+    const parent = el.parentNode!
+    while (el.firstChild) parent.insertBefore(el.firstChild, el)
+    parent.removeChild(el)
+    return
+  }
+
+  const span = document.createElement("span")
+  Object.entries(styles).forEach(([k, v]) => span.style.setProperty(k, v))
+  const frag = range.extractContents()
+  span.appendChild(frag)
+  range.insertNode(span)
+  const newRange = document.createRange()
+  newRange.selectNodeContents(span)
+  sel.removeAllRanges()
+  sel.addRange(newRange)
+}
+
+function stepFontSize(container: HTMLElement, delta: number) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+  const range = sel.getRangeAt(0)
+  if (!container.contains(range.commonAncestorContainer)) return
+
+  const el = commonAncestorElement(range)
+  // if the selection exactly matches an existing size-adjusted span, resize it
+  // in place instead of wrapping again — otherwise repeated clicks nest deeper
+  const exactSpan = el && el.tagName === "SPAN" && el.textContent === range.toString() && el.style.fontSize
+    ? el
+    : null
+
+  const current = parseFloat(getComputedStyle(exactSpan ?? el ?? container).fontSize) || 14
+  const next = Math.max(10, Math.min(36, current + delta))
+
+  const span = exactSpan ?? document.createElement("span")
+  span.style.setProperty("font-size", `${next}px`)
+  if (exactSpan) {
+    const newRange = document.createRange()
+    newRange.selectNodeContents(span)
+    sel.removeAllRanges()
+    sel.addRange(newRange)
+    return
+  }
+
+  const frag = range.extractContents()
+  span.appendChild(frag)
+  range.insertNode(span)
+  const newRange = document.createRange()
+  newRange.selectNodeContents(span)
+  sel.removeAllRanges()
+  sel.addRange(newRange)
+}
+
+const formatBtnStyle: React.CSSProperties = {
+  background: "none", border: "none", cursor: "pointer",
+  color: "#eee", fontSize: 12, padding: "5px 8px", lineHeight: 1,
+}
+
+/** Floating toolbar that appears above whatever text is selected inside
+ *  `containerRef`, and only then — hidden the rest of the time. */
+function FormatToolbar({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    const update = () => {
+      const container = containerRef.current
+      const sel = window.getSelection()
+      if (!container || !sel || sel.rangeCount === 0 || sel.isCollapsed) {
+        setPos(null)
+        return
+      }
+      const range = sel.getRangeAt(0)
+      if (!container.contains(range.commonAncestorContainer)) {
+        setPos(null)
+        return
+      }
+      const r = range.getBoundingClientRect()
+      if (r.width === 0 && r.height === 0) { setPos(null); return }
+      setPos({ top: r.top - 38, left: r.left + r.width / 2 })
+    }
+    document.addEventListener("selectionchange", update)
+    return () => document.removeEventListener("selectionchange", update)
+  }, [containerRef])
+
+  if (!pos) return null
+
+  const run = (fn: (el: HTMLElement) => void) => {
+    const container = containerRef.current
+    if (!container) return
+    fn(container)
+  }
+
+  return (
+    <div
+      onMouseDown={e => e.preventDefault()}
+      style={{
+        position: "fixed", top: pos.top, left: pos.left, transform: "translateX(-50%)",
+        display: "flex", alignItems: "center", gap: 2,
+        background: "#222", borderRadius: 4, padding: "3px 4px",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.18)", zIndex: 200,
+      }}
+    >
+      <button
+        title="Light"
+        style={{ ...formatBtnStyle, color: LIGHT_COLOR }}
+        onClick={() => run(el => toggleSpanStyle(el, { color: LIGHT_COLOR }))}
+      >
+        Aa
+      </button>
+      <button
+        title="Bold"
+        style={{ ...formatBtnStyle, fontWeight: 700, color: "#fff" }}
+        onClick={() => run(el => toggleSpanStyle(el, { "font-weight": "700", color: BOLD_COLOR }))}
+      >
+        B
+      </button>
+      <button
+        title="Italic"
+        style={{ ...formatBtnStyle, fontStyle: "italic", color: "#fff" }}
+        onClick={() => run(el => toggleSpanStyle(el, { "font-style": "italic" }))}
+      >
+        I
+      </button>
+      <button
+        title="Underline"
+        style={{ ...formatBtnStyle, textDecoration: "underline", color: "#fff" }}
+        onClick={() => run(el => toggleSpanStyle(el, { "text-decoration": "underline" }))}
+      >
+        U
+      </button>
+      <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.15)", margin: "0 2px" }} />
+      <button title="Smaller" style={{ ...formatBtnStyle, color: "#fff" }} onClick={() => run(el => stepFontSize(el, -2))}>
+        A−
+      </button>
+      <button title="Larger" style={{ ...formatBtnStyle, color: "#fff" }} onClick={() => run(el => stepFontSize(el, 2))}>
+        A+
+      </button>
+    </div>
+  )
+}
+
 // ── editable multi-line body ──────────────────────────────────────────────────
 const PLACEHOLDER = '<span data-ph style="color:#c9c9c9;pointer-events:none">Write something here…</span>'
 
@@ -206,24 +379,27 @@ function EditBody({
   }, [])
 
   return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onFocus={() => {
-        if (empty.current && ref.current?.querySelector("[data-ph]")) {
-          ref.current.innerHTML = ""
-          empty.current = false
-        }
-      }}
-      onBlur={e => {
-        const html = e.currentTarget.innerHTML
-        empty.current = !html
-        if (!html) e.currentTarget.innerHTML = PLACEHOLDER
-        onSave(html === PLACEHOLDER ? "" : html)
-      }}
-      style={{ outline: "none", cursor: "text", ...style }}
-    />
+    <>
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onFocus={() => {
+          if (empty.current && ref.current?.querySelector("[data-ph]")) {
+            ref.current.innerHTML = ""
+            empty.current = false
+          }
+        }}
+        onBlur={e => {
+          const html = e.currentTarget.innerHTML
+          empty.current = !html
+          if (!html) e.currentTarget.innerHTML = PLACEHOLDER
+          onSave(html === PLACEHOLDER ? "" : html)
+        }}
+        style={{ outline: "none", cursor: "text", ...style }}
+      />
+      <FormatToolbar containerRef={ref} />
+    </>
   )
 }
 
