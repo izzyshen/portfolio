@@ -114,23 +114,6 @@ function selectionFullyHasStyle(range: Range, styles: Record<string, string>): b
 /** Removes `styles` from every element inside `root` that carries them,
  *  unwrapping any element left with no inline style at all. Handles
  *  formatting spread across multiple/nested spans, not just one clean span. */
-function stripStylesFromFragment(root: DocumentFragment, styles: Record<string, string>) {
-  const toUnwrap: HTMLElement[] = []
-  root.querySelectorAll<HTMLElement>("*").forEach(el => {
-    let touched = false
-    Object.entries(styles).forEach(([prop, target]) => {
-      if (el.style?.getPropertyValue(prop) === target) { el.style.removeProperty(prop); touched = true }
-    })
-    if (touched && el.getAttribute("style") === "") toUnwrap.push(el)
-  })
-  toUnwrap.forEach(el => {
-    const parent = el.parentNode
-    if (!parent) return
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
-    parent.removeChild(el)
-  })
-}
-
 /** Removes spans that ended up with no text at all — debris left behind when
  *  extractContents() splits a partially-overlapped ancestor. */
 function pruneEmptySpans(root: ParentNode) {
@@ -139,29 +122,112 @@ function pruneEmptySpans(root: ParentNode) {
   })
 }
 
+/** Range.extractContents()/insertNode() only clone a wrapping ancestor into
+ *  the fragment when the range's boundary is a TEXT NODE partway through it.
+ *  If a boundary is the ELEMENT itself instead — e.g. from
+ *  `range.selectNodeContents(span)`, which is exactly what re-selecting an
+ *  already-formatted span for a second toggle produces — extraction pulls
+ *  out only the bare children, leaves the (now-empty) span behind live in
+ *  the DOM, and insertNode() puts the content right back inside that same
+ *  surviving span: a silent no-op that looks like "toggle off did nothing".
+ *  Real browsers can also produce element-boundary selections in some cases
+ *  (not just this app's own re-selection code), so this isn't just a test
+ *  artifact — normalizing to text-node boundaries first avoids it entirely. */
+function textBoundary(container: Node, offset: number, atEnd: boolean): [Node, number] {
+  if (container.nodeType === Node.TEXT_NODE) return [container, offset]
+  const children = container.childNodes
+  if (children.length === 0) return [container, offset]
+  const idx = atEnd ? Math.max(0, offset - 1) : Math.min(offset, children.length - 1)
+  const child = children[idx]
+  if (child.nodeType === Node.TEXT_NODE) {
+    return atEnd ? [child, (child as Text).length] : [child, 0]
+  }
+  const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT)
+  if (atEnd) {
+    let last: Text | null = null
+    let n: Node | null
+    while ((n = walker.nextNode())) last = n as Text
+    return last ? [last, last.length] : [container, offset]
+  }
+  const first = walker.nextNode() as Text | null
+  return first ? [first, 0] : [container, offset]
+}
+
+function normalizeRangeToText(range: Range): Range {
+  const [startNode, startOffset] = textBoundary(range.startContainer, range.startOffset, false)
+  const [endNode, endOffset] = textBoundary(range.endContainer, range.endOffset, true)
+  const r = document.createRange()
+  r.setStart(startNode, startOffset)
+  r.setEnd(endNode, endOffset)
+  return r
+}
+
+/** Strips `styles` from every LIVE element in `container` that carries them
+ *  AND is entirely inside `range` (checked via proper Range boundary
+ *  comparison, not text-node walking). Unwraps an element left with no
+ *  inline style at all. This never goes through extractContents()/
+ *  insertNode() — deliberately: that pairing only clones a wrapping
+ *  ancestor into the extracted fragment when the range's start and end
+ *  containers DIFFER. Whenever a selection sits entirely within one text
+ *  node — which is exactly what "re-select the word you just formatted"
+ *  produces — start and end are the SAME node, no ancestor gets cloned, the
+ *  styled span is left behind live and empty, and the extracted (unstyled)
+ *  text gets reinserted right back inside that same span: a silent no-op
+ *  that looks like the toggle button does nothing. Modifying the real
+ *  elements in place sidesteps that extractContents quirk entirely. */
+function stripStyleInPlace(range: Range, container: HTMLElement, styles: Record<string, string>) {
+  const candidates: HTMLElement[] = []
+  container.querySelectorAll<HTMLElement>("*").forEach(el => {
+    const hasAny = Object.entries(styles).some(([k, v]) => el.style?.getPropertyValue(k) === v)
+    if (!hasAny) return
+    // compareBoundaryPoints gives unreliable results comparing a text-node
+    // boundary against an element/child-index boundary (the two ranges here
+    // would otherwise be built differently) — normalize both to text-node
+    // boundaries first so the comparison is apples-to-apples
+    const elRange = normalizeRangeToText((() => {
+      const r = document.createRange()
+      r.selectNodeContents(el)
+      return r
+    })())
+    const contained = range.compareBoundaryPoints(Range.START_TO_START, elRange) <= 0
+      && range.compareBoundaryPoints(Range.END_TO_END, elRange) >= 0
+    if (contained) candidates.push(el)
+  })
+  candidates.forEach(el => {
+    Object.keys(styles).forEach(k => el.style.removeProperty(k))
+    if (!el.getAttribute("style")) {
+      const parent = el.parentNode
+      if (!parent) return
+      while (el.firstChild) parent.insertBefore(el.firstChild, el)
+      parent.removeChild(el)
+    }
+  })
+}
+
 function toggleSpanStyle(container: HTMLElement, rawStyles: Record<string, string>) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-  const range = sel.getRangeAt(0)
+  const range = normalizeRangeToText(sel.getRangeAt(0))
   if (!container.contains(range.commonAncestorContainer)) return
 
   const styles = Object.fromEntries(
     Object.entries(rawStyles).map(([k, v]) => [k, normalizedStyleValue(k, v)])
   )
+  const startNode = range.startContainer
+  const startOffset = range.startOffset
+  const endNode = range.endContainer
+  const endOffset = range.endOffset
 
   if (selectionFullyHasStyle(range, styles)) {
-    const frag = range.extractContents()
-    stripStylesFromFragment(frag, styles)
-    const insertedNodes = [...frag.childNodes]
-    range.insertNode(frag)
+    stripStyleInPlace(range, container, styles)
     pruneEmptySpans(container)
-    if (insertedNodes.length) {
-      const newRange = document.createRange()
-      newRange.setStartBefore(insertedNodes[0])
-      newRange.setEndAfter(insertedNodes[insertedNodes.length - 1])
-      sel.removeAllRanges()
-      sel.addRange(newRange)
-    }
+    // the text nodes themselves survive unwrapping (only their parent
+    // changes), so the original boundary references are still valid
+    const newRange = document.createRange()
+    newRange.setStart(startNode, startOffset)
+    newRange.setEnd(endNode, endOffset)
+    sel.removeAllRanges()
+    sel.addRange(newRange)
     return
   }
 
