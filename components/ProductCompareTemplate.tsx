@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
+import {
+  useMediaSrc,
+  storeImageFile,
+  migrateDataUrl,
+  pruneOrphanedMedia,
+} from "@/lib/mediaStore"
 
 const FONT_OPTIONS = [
   { label: "Afacad", value: "'Afacad', sans-serif" },
@@ -492,18 +498,25 @@ const btnStyle: React.CSSProperties = {
 }
 
 // ── one column ─────────────────────────────────────────────────────────────
+/** Resolves an `idb:` ref to a displayable blob URL; plain URLs pass through. */
+function BlockImage({ src }: { src: string }) {
+  const resolved = useMediaSrc(src)
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={resolved} alt="" style={{ width: "100%", display: "block" }} />
+}
+
 function ColumnView({
   column, onChange,
 }: { column: Column; onChange: (c: Column) => void }) {
   const imgRef = useRef<HTMLInputElement>(null)
 
+  // stored in IndexedDB, with only an `idb:` ref kept in localStorage — see
+  // lib/mediaStore for why base64-in-localStorage ran out of room
   const addImage = (f: File) => {
-    const r = new FileReader()
-    r.onload = () => {
-      const block: ImageBlock = { id: uid(), kind: "image", src: r.result as string, caption: "" }
+    storeImageFile(f).then(src => {
+      const block: ImageBlock = { id: uid(), kind: "image", src, caption: "" }
       onChange({ ...column, blocks: [...column.blocks, block] })
-    }
-    r.readAsDataURL(f)
+    })
   }
 
   const addText = () => {
@@ -538,8 +551,7 @@ function ColumnView({
             />
           ) : (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={block.src} alt="" style={{ width: "100%", display: "block" }} />
+              <BlockImage src={block.src} />
               <EditLine
                 initial={block.caption || "Caption…"}
                 style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.04em", marginTop: 8 }}
@@ -620,6 +632,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
   const [content, setContent] = useState<CompareContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [undoneMsg, setUndoneMsg] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -655,23 +668,48 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   // closed, so a quick close right after typing can never lose that edit
   const pendingRef = useRef<CompareContent | null>(null)
 
+  const writeNow = async (next: CompareContent): Promise<boolean> => {
+    const payload = JSON.stringify(next)
+    const attempt = () => {
+      localStorage.setItem(storageKey, payload)
+      pendingRef.current = null
+      setSaveError(false)
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 1200)
+    }
+    try {
+      attempt()
+      return true
+    } catch {
+      // quota exceeded — reclaim unreferenced media and retry once before
+      // giving up (this used to throw uncaught and silently lose the edit)
+      try {
+        await pruneOrphanedMedia()
+        attempt()
+        return true
+      } catch {
+        setSaveError(true)
+        return false
+      }
+    }
+  }
+
   const persist = (next: CompareContent) => {
     pendingRef.current = next
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      localStorage.setItem(storageKey, JSON.stringify(next))
-      pendingRef.current = null
-      setSavedMsg(true)
-      setTimeout(() => setSavedMsg(false), 1200)
-    }, 500)
+    timer.current = setTimeout(() => { void writeNow(next) }, 500)
   }
 
   useEffect(() => {
     const flush = () => {
       if (!pendingRef.current) return
       clearTimeout(timer.current)
-      localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
-      pendingRef.current = null
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+        pendingRef.current = null
+      } catch {
+        // quota exceeded at unload time — nothing more we can do here
+      }
     }
     const onVisibilityChange = () => { if (document.visibilityState === "hidden") flush() }
     window.addEventListener("pagehide", flush)
@@ -681,6 +719,32 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [storageKey])
+
+  // one-time upgrade of legacy inline base64 into IndexedDB (see ProjectTemplate)
+  const migratedRef = useRef(false)
+  useEffect(() => {
+    if (!content || migratedRef.current) return
+    migratedRef.current = true
+    ;(async () => {
+      let changed = false
+      const columns = await Promise.all(content.columns.map(async col => {
+        const blocks = await Promise.all(col.blocks.map(async b => {
+          if (b.kind !== "image" || !b.src.startsWith("data:")) return b
+          const src = await migrateDataUrl(b.src)
+          if (src === b.src) return b
+          changed = true
+          return { ...b, src }
+        }))
+        return changed ? { ...col, blocks } : col
+      }))
+      if (changed) {
+        const migrated = { ...content, columns: columns as [Column, Column] }
+        setContent(migrated)
+        try { localStorage.setItem(storageKey, JSON.stringify(migrated)) } catch { /* retried on next save */ }
+      }
+      await pruneOrphanedMedia()
+    })()
+  }, [content, storageKey])
 
   const patch = (updates: Partial<CompareContent>) => {
     setContent(prev => {
@@ -789,15 +853,61 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
             onChange={c => patchColumn(1, c)}
           />
         </div>
+
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 56 }}>
+          <button
+            onClick={() => {
+              // blur the focused field first so its onBlur lands in `content`
+              // before this reads it, then write immediately (no debounce)
+              const active = document.activeElement
+              if (active instanceof HTMLElement && active.isContentEditable) active.blur()
+              setTimeout(() => {
+                clearTimeout(timer.current)
+                setContent(prev => {
+                  if (prev) void writeNow(prev)
+                  return prev
+                })
+              }, 0)
+            }}
+            style={{
+              background: "#1a1a1a", border: "none", color: "#fff",
+              fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+              padding: "11px 30px", cursor: "pointer",
+            }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {savedMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#c4c2bc", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
-          SAVED
+        <div style={{
+          position: "fixed", bottom: 28, right: 32,
+          color: "#fff", fontSize: 11, letterSpacing: "0.14em", fontWeight: 500,
+          background: "#1a1a1a", padding: "9px 16px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
+        }}>
+          ✓ SAVED
+        </div>
+      )}
+      {saveError && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 32, maxWidth: 280,
+          color: "#fff", fontSize: 12, letterSpacing: "0.02em", lineHeight: 1.5,
+          background: "#a15c4a", padding: "10px 14px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
+        }}>
+          Couldn&apos;t save — this browser&apos;s storage is full even after clearing
+          unused media. Removing a large image should free it up.
         </div>
       )}
       {undoneMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#a08c5c", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+        <div style={{
+          position: "fixed", bottom: 28, right: 32,
+          color: "#fff", fontSize: 11, letterSpacing: "0.1em", fontWeight: 500,
+          background: "#8a6d2f", padding: "9px 16px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
+        }}>
           UNDONE — ⌘Z AGAIN FOR MORE
         </div>
       )}

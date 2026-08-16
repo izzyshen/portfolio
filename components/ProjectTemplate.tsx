@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
+import {
+  useMediaSrc,
+  storeImageFile,
+  storeVideoFile,
+  migrateDataUrl,
+  pruneOrphanedMedia,
+  storageHeadroomMB,
+} from "@/lib/mediaStore"
 
 const FONT_OPTIONS = [
   { label: "Afacad", value: "'Afacad', sans-serif" },
@@ -234,6 +242,37 @@ function normalize(raw: unknown, slug: string): ProjectContent {
     sections,
     dismissedSeeds: Array.isArray(r.dismissedSeeds) ? (r.dismissedSeeds as string[]) : [],
   }, slug)
+}
+
+/** One-time upgrade for pages saved before media moved to IndexedDB: rewrites
+ *  every inline base64 `data:` URL to an `idb:` ref. This is what actually
+ *  frees a jammed localStorage — the old payloads were megabytes each, and
+ *  until they're out of the way every save keeps hitting the quota ceiling.
+ *  Returns null when there was nothing to migrate. */
+async function migrateContentMedia(c: ProjectContent): Promise<ProjectContent | null> {
+  let changed = false
+
+  const conv = async (src: string): Promise<string> => {
+    if (typeof src !== "string" || !src.startsWith("data:")) return src
+    const ref = await migrateDataUrl(src)
+    if (ref !== src) changed = true
+    return ref
+  }
+
+  const convBlocks = (blocks: MediaBlock[]) => Promise.all(blocks.map(async b => {
+    const src = await conv(b.src)
+    const poster = b.poster ? await conv(b.poster) : b.poster
+    return src === b.src && poster === b.poster ? b : { ...b, src, poster }
+  }))
+
+  const coverSrc = await conv(c.coverSrc)
+  const heroBlocks = c.heroBlocks ? await convBlocks(c.heroBlocks) : c.heroBlocks
+  const sections = await Promise.all(c.sections.map(async s => {
+    const blocks = await convBlocks(s.blocks)
+    return blocks.some((b, i) => b !== s.blocks[i]) ? { ...s, blocks } : s
+  }))
+
+  return changed ? { ...c, coverSrc, heroBlocks, sections } : null
 }
 
 /** Read the project list the landing page is actually showing. */
@@ -624,11 +663,8 @@ function EditBody({
 // ── cover image ───────────────────────────────────────────────────────────────
 function CoverZone({ src, onChange }: { src: string; onChange: (s: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const readFile = (f: File) => {
-    const r = new FileReader()
-    r.onload = () => onChange(r.result as string)
-    r.readAsDataURL(f)
-  }
+  const displaySrc = useMediaSrc(src)
+  const readFile = (f: File) => { storeImageFile(f).then(onChange) }
   return (
     <div
       onClick={() => !src && inputRef.current?.click()}
@@ -647,7 +683,7 @@ function CoverZone({ src, onChange }: { src: string; onChange: (s: string) => vo
       {src ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" style={{ width: "100%", display: "block" }} />
+          <img src={displaySrc} alt="" style={{ width: "100%", display: "block" }} />
           <button onClick={() => onChange("")} style={overlayBtn}>✕ remove</button>
         </>
       ) : (
@@ -691,6 +727,8 @@ function toEmbedUrl(url: string) {
 function HoverVideo({ src, poster }: { src: string; poster?: string }) {
   const ref = useRef<HTMLVideoElement>(null)
   const [hover, setHover] = useState(false)
+  const displaySrc = useMediaSrc(src)
+  const displayPoster = useMediaSrc(poster ?? "")
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -714,8 +752,8 @@ function HoverVideo({ src, poster }: { src: string; poster?: string }) {
     >
       <video
         ref={ref}
-        src={src}
-        poster={poster}
+        src={displaySrc}
+        poster={displayPoster || undefined}
         muted
         loop
         playsInline
@@ -759,6 +797,7 @@ function BlockView({
   isDragging: boolean
   isDropTarget: boolean
 }) {
+  const imageSrc = useMediaSrc(block.type === "image" ? block.src : "")
   return (
     <div
       data-block-id={block.id}
@@ -793,7 +832,7 @@ function BlockView({
       </div>
       {block.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={block.src} alt="" style={{ width: "100%", display: "block" }} />
+        <img src={imageSrc} alt="" style={{ width: "100%", display: "block" }} />
       ) : isEmbedUrl(block.src) ? (
         <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden" }}>
           <iframe
@@ -825,10 +864,10 @@ const btnStyle: React.CSSProperties = {
   padding: "5px 12px", cursor: "pointer",
 }
 
-// videos are stored as base64 in localStorage (same as images) — the browser's
-// per-origin quota is typically 5-10MB total, so a big upload can silently fail
-// to persist. Warn early rather than let someone lose an edit without knowing why.
-const VIDEO_WARN_BYTES = 15 * 1024 * 1024
+// Media goes to IndexedDB (a ~6GB budget here) rather than localStorage's
+// ~12MB, so ordinary uploads have room to spare. This only guards against a
+// clip large enough to matter against the whole-disk quota.
+const VIDEO_WARN_BYTES = 300 * 1024 * 1024
 
 function AddRow({
   visible, onAddImage, onAddVideo,
@@ -837,35 +876,40 @@ function AddRow({
   const videoFileRef = useRef<HTMLInputElement>(null)
   const [videoMode, setVideoMode] = useState(false)
   const [url, setUrl] = useState("")
+  const [busy, setBusy] = useState(false)
 
-  const readFile = (f: File, onDone: (dataUrl: string) => void) => {
-    const r = new FileReader()
-    r.onload = () => onDone(r.result as string)
-    r.readAsDataURL(f)
+  // a big image gets decoded and re-encoded before it lands, which is fast but
+  // not instant — flag it so a second click can't queue a duplicate upload
+  const withBusy = (p: Promise<string>, onDone: (ref: string) => void) => {
+    setBusy(true)
+    p.then(onDone).finally(() => setBusy(false))
   }
 
   const readVideoFile = (f: File) => {
     if (f.size > VIDEO_WARN_BYTES) {
-      const mb = (f.size / (1024 * 1024)).toFixed(1)
+      const mb = (f.size / (1024 * 1024)).toFixed(0)
       const proceed = window.confirm(
-        `This video is ${mb}MB. Large videos can exceed the browser's local storage limit and fail to save. Continue anyway?`
+        `This video is ${mb}MB. Files this large can exhaust the browser's storage budget. Continue anyway?`
       )
       if (!proceed) return
     }
-    readFile(f, onAddVideo)
+    withBusy(storeVideoFile(f), onAddVideo)
   }
 
   return (
     // opacity, not display:none — keeps this row's height reserved at all
     // times so nothing else in the section reflows when it fades in/out
     <div style={{ marginTop: 14, opacity: visible ? 1 : 0, pointerEvents: visible ? "auto" : "none", transition: "opacity 0.15s" }}>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => imgRef.current?.click()} style={btnStyle}>+ IMAGE</button>
-        <button onClick={() => videoFileRef.current?.click()} style={btnStyle}>+ VIDEO FILE</button>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button onClick={() => imgRef.current?.click()} style={btnStyle} disabled={busy}>+ IMAGE</button>
+        <button onClick={() => videoFileRef.current?.click()} style={btnStyle} disabled={busy}>+ VIDEO FILE</button>
         <button onClick={() => setVideoMode(v => !v)} style={btnStyle}>+ VIDEO URL</button>
+        {busy && (
+          <span style={{ color: "#b0aea8", fontSize: 9, letterSpacing: "0.16em" }}>ADDING…</span>
+        )}
         <input
           ref={imgRef} type="file" accept="image/*" style={{ display: "none" }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f, onAddImage); e.target.value = "" }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) withBusy(storeImageFile(f), onAddImage); e.target.value = "" }}
         />
         <input
           ref={videoFileRef} type="file" accept="video/*" style={{ display: "none" }}
@@ -1090,21 +1134,40 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   // closed, so a quick close right after typing can never lose that edit
   const pendingRef = useRef<ProjectContent | null>(null)
 
+  /** The single write path — used by the debounce, the Save button, and the
+   *  tab-hidden flush, so all three behave identically. */
+  const writeNow = async (next: ProjectContent): Promise<boolean> => {
+    const payload = JSON.stringify(next)
+    const attempt = () => {
+      localStorage.setItem(storageKey, payload)
+      pendingRef.current = null
+      setSaveError(false)
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 1200)
+    }
+    try {
+      attempt()
+      return true
+    } catch {
+      // Quota exceeded. Media now lives in IndexedDB, so what's left here is
+      // small — but a page that still holds pre-migration base64, or blobs
+      // orphaned by deletes, can keep it wedged. Reclaim, then retry once
+      // rather than making someone reset storage by hand.
+      try {
+        await pruneOrphanedMedia()
+        attempt()
+        return true
+      } catch {
+        setSaveError(true)
+        return false
+      }
+    }
+  }
+
   const persist = (next: ProjectContent) => {
     pendingRef.current = next
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(next))
-        pendingRef.current = null
-        setSaveError(false)
-        setSavedMsg(true)
-        setTimeout(() => setSavedMsg(false), 1200)
-      } catch {
-        // most likely QuotaExceededError from a large video's base64 payload
-        setSaveError(true)
-      }
-    }, 500)
+    timer.current = setTimeout(() => { void writeNow(next) }, 500)
   }
 
   useEffect(() => {
@@ -1126,6 +1189,24 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [storageKey])
+
+  // Once per page load, after content first appears: pull any legacy inline
+  // base64 out into IndexedDB, then drop blobs nothing points at any more.
+  const migratedRef = useRef(false)
+  useEffect(() => {
+    if (!content || migratedRef.current) return
+    migratedRef.current = true
+    ;(async () => {
+      const migrated = await migrateContentMedia(content)
+      if (migrated) {
+        setContent(migrated)
+        // write straight through: the whole point is to free the space now,
+        // and going via the debounce would leave the bloated copy in place
+        try { localStorage.setItem(storageKey, JSON.stringify(migrated)) } catch { /* retried on next save */ }
+      }
+      await pruneOrphanedMedia()
+    })()
+  }, [content, storageKey])
 
   const patch = (updates: Partial<ProjectContent>) => {
     setContent(prev => {
@@ -1362,16 +1443,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
               setTimeout(() => {
                 clearTimeout(timer.current)
                 setContent(prev => {
-                  if (!prev) return prev
-                  try {
-                    localStorage.setItem(storageKey, JSON.stringify(prev))
-                    pendingRef.current = null
-                    setSaveError(false)
-                    setSavedMsg(true)
-                    setTimeout(() => setSavedMsg(false), 1200)
-                  } catch {
-                    setSaveError(true)
-                  }
+                  if (prev) void writeNow(prev)
                   return prev
                 })
               }, 0)
@@ -1404,7 +1476,8 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
           background: "#a15c4a", padding: "10px 14px", borderRadius: 3,
           boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
         }}>
-          Couldn&apos;t save — local storage is full. Try a smaller or shorter video.
+          Couldn&apos;t save — this browser&apos;s storage is full even after clearing
+          unused media. Removing a large video should free it up.
         </div>
       )}
       {undoneMsg && (
