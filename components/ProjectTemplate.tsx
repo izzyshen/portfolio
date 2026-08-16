@@ -750,17 +750,18 @@ function HoverVideo({ src, poster }: { src: string; poster?: string }) {
 }
 
 function BlockView({
-  block, onDelete, onCaptionSave, dragHandleProps, isDragging, isDropTarget,
+  block, onDelete, onCaptionSave, onHandlePointerDown, isDragging, isDropTarget,
 }: {
   block: MediaBlock
   onDelete: () => void
   onCaptionSave: (c: string) => void
-  dragHandleProps: React.HTMLAttributes<HTMLDivElement>
+  onHandlePointerDown: (e: React.PointerEvent) => void
   isDragging: boolean
   isDropTarget: boolean
 }) {
   return (
     <div
+      data-block-id={block.id}
       style={{
         marginBottom: 28,
         position: "relative",
@@ -771,13 +772,21 @@ function BlockView({
       }}
     >
       <div
-        {...dragHandleProps}
+        onPointerDown={onHandlePointerDown}
         title="Drag to reorder"
         style={{
-          position: "absolute", top: 8, left: 8,
+          // explicit z-index (not "auto") so this always paints above the
+          // media below it: HoverVideo/the embed iframe wrapper are
+          // themselves position:relative and come later in the DOM, so
+          // without this they'd win the stacking tie-break and silently eat
+          // every click/drag aimed at the handle (image blocks are static,
+          // not positioned, so they never had this problem — only video and
+          // embed blocks did)
+          position: "absolute", top: 8, left: 8, zIndex: 2,
           background: "rgba(255,255,255,0.9)", border: "1px solid #e4e4e4",
           color: "#888", fontSize: 11, letterSpacing: "0.1em",
           padding: "4px 7px", cursor: "grab", userSelect: "none",
+          touchAction: "none",
         }}
       >
         ⠿
@@ -902,14 +911,61 @@ function SectionMedia({
   const [hover, setHover] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
-  // dragstart and drop can fire in the same tick as each other (a fast flick,
-  // or a programmatic drag) with no re-render in between, so a handler
-  // reading `draggingId` from its render closure can still see the pre-drag
-  // value. A ref is always current regardless of render timing.
+  const containerRef = useRef<HTMLDivElement>(null)
   const draggingIdRef = useRef<string | null>(null)
+  const overIdRef = useRef<string | null>(null)
+
+  // Pointer-based reorder instead of native HTML5 drag-and-drop: native
+  // draggable="true" needs the browser to recognize a real OS-level drag
+  // gesture, which is unreliable on trackpads and doesn't work on touch at
+  // all. Plain pointer events (down/move/up) behave the same across mouse,
+  // trackpad, and touch, and we do our own hit-testing by comparing the
+  // pointer's Y position against each block's measured rect — no dependency
+  // on which element happens to be topmost at that point.
+  useEffect(() => {
+    if (!draggingId) return
+
+    const onMove = (e: PointerEvent) => {
+      const container = containerRef.current
+      if (!container) return
+      const items = container.querySelectorAll<HTMLElement>("[data-block-id]")
+      let hit: string | null = null
+      for (const el of items) {
+        const id = el.getAttribute("data-block-id")
+        if (id === draggingIdRef.current) continue
+        const r = el.getBoundingClientRect()
+        if (e.clientY >= r.top && e.clientY <= r.bottom) { hit = id; break }
+      }
+      overIdRef.current = hit
+      setOverId(hit)
+    }
+
+    const finish = () => {
+      const from = draggingIdRef.current
+      const to = overIdRef.current
+      if (from && to && from !== to) onReorder(from, to)
+      draggingIdRef.current = null
+      overIdRef.current = null
+      setDraggingId(null)
+      setOverId(null)
+    }
+
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", finish)
+    window.addEventListener("pointercancel", finish)
+    return () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", finish)
+      window.removeEventListener("pointercancel", finish)
+    }
+    // onReorder is stable per-render from the parent's map callback; re-running
+    // this effect on every keystroke elsewhere would just churn listeners
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draggingId])
 
   return (
     <div
+      ref={containerRef}
       style={{ marginTop: 20 }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -922,30 +978,10 @@ function SectionMedia({
           onCaptionSave={cap => onCaptionSave(block, cap)}
           isDragging={draggingId === block.id}
           isDropTarget={overId === block.id && draggingId !== null && draggingId !== block.id}
-          dragHandleProps={{
-            draggable: true,
-            onDragStart: e => {
-              draggingIdRef.current = block.id
-              setDraggingId(block.id)
-              e.dataTransfer.effectAllowed = "move"
-              // Firefox requires data to be set for drag to start at all
-              e.dataTransfer.setData("text/plain", block.id)
-            },
-            onDragEnd: () => { draggingIdRef.current = null; setDraggingId(null); setOverId(null) },
-            onDragOver: e => {
-              const draggingNow = draggingIdRef.current
-              if (!draggingNow || draggingNow === block.id) return
-              e.preventDefault()
-              setOverId(block.id)
-            },
-            onDrop: e => {
-              e.preventDefault()
-              const draggingNow = draggingIdRef.current
-              if (draggingNow && draggingNow !== block.id) onReorder(draggingNow, block.id)
-              draggingIdRef.current = null
-              setDraggingId(null)
-              setOverId(null)
-            },
+          onHandlePointerDown={e => {
+            e.preventDefault()
+            draggingIdRef.current = block.id
+            setDraggingId(block.id)
           }}
         />
       ))}
@@ -1352,22 +1388,32 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       </div>
 
       {savedMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#c4c2bc", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
-          SAVED
+        <div style={{
+          position: "fixed", bottom: 28, right: 32,
+          color: "#fff", fontSize: 11, letterSpacing: "0.14em", fontWeight: 500,
+          background: "#1a1a1a", padding: "9px 16px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
+        }}>
+          ✓ SAVED
         </div>
       )}
       {saveError && (
         <div style={{
-          position: "fixed", bottom: 28, right: 32, maxWidth: 260,
-          color: "#a15c4a", fontSize: 10, letterSpacing: "0.04em",
-          background: "#fbf1ee", border: "1px solid #eeded9",
-          padding: "8px 12px", pointerEvents: "none",
+          position: "fixed", bottom: 28, right: 32, maxWidth: 280,
+          color: "#fff", fontSize: 12, letterSpacing: "0.02em", lineHeight: 1.5,
+          background: "#a15c4a", padding: "10px 14px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
         }}>
           Couldn&apos;t save — local storage is full. Try a smaller or shorter video.
         </div>
       )}
       {undoneMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#a08c5c", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+        <div style={{
+          position: "fixed", bottom: 28, right: 32,
+          color: "#fff", fontSize: 11, letterSpacing: "0.1em", fontWeight: 500,
+          background: "#8a6d2f", padding: "9px 16px", borderRadius: 3,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)", pointerEvents: "none",
+        }}>
           UNDONE — ⌘Z AGAIN FOR MORE
         </div>
       )}
