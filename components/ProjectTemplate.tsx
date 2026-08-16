@@ -309,10 +309,50 @@ function pruneEmptySpans(root: ParentNode) {
   })
 }
 
+/** Range.extractContents()/insertNode() only clone a wrapping ancestor into
+ *  the fragment when the range's boundary is a TEXT NODE partway through it.
+ *  If a boundary is the ELEMENT itself instead — e.g. from
+ *  `range.selectNodeContents(span)`, which is exactly what re-selecting an
+ *  already-formatted span for a second toggle produces — extraction pulls
+ *  out only the bare children, leaves the (now-empty) span behind live in
+ *  the DOM, and insertNode() puts the content right back inside that same
+ *  surviving span: a silent no-op that looks like "toggle off did nothing".
+ *  Real browsers can also produce element-boundary selections in some cases
+ *  (not just this app's own re-selection code), so this isn't just a test
+ *  artifact — normalizing to text-node boundaries first avoids it entirely. */
+function textBoundary(container: Node, offset: number, atEnd: boolean): [Node, number] {
+  if (container.nodeType === Node.TEXT_NODE) return [container, offset]
+  const children = container.childNodes
+  if (children.length === 0) return [container, offset]
+  const idx = atEnd ? Math.max(0, offset - 1) : Math.min(offset, children.length - 1)
+  const child = children[idx]
+  if (child.nodeType === Node.TEXT_NODE) {
+    return atEnd ? [child, (child as Text).length] : [child, 0]
+  }
+  const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT)
+  if (atEnd) {
+    let last: Text | null = null
+    let n: Node | null
+    while ((n = walker.nextNode())) last = n as Text
+    return last ? [last, last.length] : [container, offset]
+  }
+  const first = walker.nextNode() as Text | null
+  return first ? [first, 0] : [container, offset]
+}
+
+function normalizeRangeToText(range: Range): Range {
+  const [startNode, startOffset] = textBoundary(range.startContainer, range.startOffset, false)
+  const [endNode, endOffset] = textBoundary(range.endContainer, range.endOffset, true)
+  const r = document.createRange()
+  r.setStart(startNode, startOffset)
+  r.setEnd(endNode, endOffset)
+  return r
+}
+
 function toggleSpanStyle(container: HTMLElement, rawStyles: Record<string, string>) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-  const range = sel.getRangeAt(0)
+  const range = normalizeRangeToText(sel.getRangeAt(0))
   if (!container.contains(range.commonAncestorContainer)) return
 
   const styles = Object.fromEntries(
@@ -635,10 +675,38 @@ function HoverVideo({ src }: { src: string }) {
 }
 
 function BlockView({
-  block, onDelete, onCaptionSave,
-}: { block: MediaBlock; onDelete: () => void; onCaptionSave: (c: string) => void }) {
+  block, onDelete, onCaptionSave, dragHandleProps, isDragging, isDropTarget,
+}: {
+  block: MediaBlock
+  onDelete: () => void
+  onCaptionSave: (c: string) => void
+  dragHandleProps: React.HTMLAttributes<HTMLDivElement>
+  isDragging: boolean
+  isDropTarget: boolean
+}) {
   return (
-    <div style={{ marginBottom: 28, position: "relative" }}>
+    <div
+      style={{
+        marginBottom: 28,
+        position: "relative",
+        opacity: isDragging ? 0.4 : 1,
+        outline: isDropTarget ? "2px dashed #b6b4ae" : "none",
+        outlineOffset: 4,
+        transition: "opacity 0.15s",
+      }}
+    >
+      <div
+        {...dragHandleProps}
+        title="Drag to reorder"
+        style={{
+          position: "absolute", top: 8, left: 8,
+          background: "rgba(255,255,255,0.9)", border: "1px solid #e4e4e4",
+          color: "#888", fontSize: 11, letterSpacing: "0.1em",
+          padding: "4px 7px", cursor: "grab", userSelect: "none",
+        }}
+      >
+        ⠿
+      </div>
       {block.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={block.src} alt="" style={{ width: "100%", display: "block" }} />
@@ -747,15 +815,24 @@ function AddRow({
  *  while the cursor is anywhere over this area — keeps the page clean when
  *  just viewing, without losing the ability to add more later. */
 function SectionMedia({
-  blocks, onDeleteBlock, onCaptionSave, onAddImage, onAddVideo,
+  blocks, onDeleteBlock, onCaptionSave, onAddImage, onAddVideo, onReorder,
 }: {
   blocks: MediaBlock[]
   onDeleteBlock: (block: MediaBlock) => void
   onCaptionSave: (block: MediaBlock, caption: string) => void
   onAddImage: (src: string) => void
   onAddVideo: (url: string) => void
+  onReorder: (fromId: string, toId: string) => void
 }) {
   const [hover, setHover] = useState(false)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  // dragstart and drop can fire in the same tick as each other (a fast flick,
+  // or a programmatic drag) with no re-render in between, so a handler
+  // reading `draggingId` from its render closure can still see the pre-drag
+  // value. A ref is always current regardless of render timing.
+  const draggingIdRef = useRef<string | null>(null)
+
   return (
     <div
       style={{ marginTop: 20 }}
@@ -768,6 +845,33 @@ function SectionMedia({
           block={block}
           onDelete={() => onDeleteBlock(block)}
           onCaptionSave={cap => onCaptionSave(block, cap)}
+          isDragging={draggingId === block.id}
+          isDropTarget={overId === block.id && draggingId !== null && draggingId !== block.id}
+          dragHandleProps={{
+            draggable: true,
+            onDragStart: e => {
+              draggingIdRef.current = block.id
+              setDraggingId(block.id)
+              e.dataTransfer.effectAllowed = "move"
+              // Firefox requires data to be set for drag to start at all
+              e.dataTransfer.setData("text/plain", block.id)
+            },
+            onDragEnd: () => { draggingIdRef.current = null; setDraggingId(null); setOverId(null) },
+            onDragOver: e => {
+              const draggingNow = draggingIdRef.current
+              if (!draggingNow || draggingNow === block.id) return
+              e.preventDefault()
+              setOverId(block.id)
+            },
+            onDrop: e => {
+              e.preventDefault()
+              const draggingNow = draggingIdRef.current
+              if (draggingNow && draggingNow !== block.id) onReorder(draggingNow, block.id)
+              draggingIdRef.current = null
+              setDraggingId(null)
+              setOverId(null)
+            },
+          }}
         />
       ))}
       <AddRow visible={hover} onAddImage={onAddImage} onAddVideo={onAddVideo} />
@@ -951,6 +1055,27 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     })
   }
 
+  // moves the dragged block to sit right where the drop-target block is
+  const reorderBlock = (si: number, fromId: string, toId: string) => {
+    setContent(prev => {
+      if (!prev) return prev
+      pushUndo(prev)
+      const sections = prev.sections.map((s, i) => {
+        if (i !== si) return s
+        const from = s.blocks.findIndex(b => b.id === fromId)
+        const to = s.blocks.findIndex(b => b.id === toId)
+        if (from === -1 || to === -1) return s
+        const blocks = [...s.blocks]
+        const [moved] = blocks.splice(from, 1)
+        blocks.splice(to, 0, moved)
+        return { ...s, blocks }
+      })
+      const next = { ...prev, sections }
+      persist(next)
+      return next
+    })
+  }
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
@@ -1043,9 +1168,48 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
               onAddVideo={url =>
                 patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "video", src: url, caption: "" }] })
               }
+              onReorder={(fromId, toId) => reorderBlock(si, fromId, toId)}
             />
           </section>
         ))}
+
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+          <button
+            onClick={() => {
+              // blur any focused contentEditable field first so its onBlur
+              // (which calls patch/patchSection) fires and lands in `content`
+              // before this reads it — otherwise a save right after typing
+              // could persist a stale, pre-edit snapshot
+              const active = document.activeElement
+              if (active instanceof HTMLElement && active.isContentEditable) active.blur()
+              // give the blur handler's state update a tick to land, then
+              // force an immediate, un-debounced write of whatever is current
+              setTimeout(() => {
+                clearTimeout(timer.current)
+                setContent(prev => {
+                  if (!prev) return prev
+                  try {
+                    localStorage.setItem(storageKey, JSON.stringify(prev))
+                    pendingRef.current = null
+                    setSaveError(false)
+                    setSavedMsg(true)
+                    setTimeout(() => setSavedMsg(false), 1200)
+                  } catch {
+                    setSaveError(true)
+                  }
+                  return prev
+                })
+              }, 0)
+            }}
+            style={{
+              background: "#1a1a1a", border: "none", color: "#fff",
+              fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+              padding: "11px 30px", cursor: "pointer",
+            }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {savedMsg && (

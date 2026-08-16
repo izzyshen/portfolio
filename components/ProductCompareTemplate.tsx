@@ -177,20 +177,91 @@ function normalizedStyleValue(prop: string, value: string): string {
   return probe.style.getPropertyValue(prop)
 }
 
-function toggleSpanStyle(container: HTMLElement, styles: Record<string, string>) {
+/** True only if EVERY bit of visible text in the range already carries all of
+ *  `styles` (via some ancestor within the range). A selection that only
+ *  partially overlaps existing formatting — e.g. it includes a trailing
+ *  space, or spans across a boundary — counts as "not fully applied", so the
+ *  button applies rather than removes, matching how Docs/Notion handle a
+ *  mixed selection. */
+function selectionFullyHasStyle(range: Range, styles: Record<string, string>): boolean {
+  // walk the LIVE dom, not a clone: Range.cloneContents() drops the wrapping
+  // ancestor entirely when start/end sit inside a single text node (the
+  // common case — e.g. the selection is exactly one already-formatted
+  // span's full text), which made this always report "not styled" for
+  // exactly the selections a toggle-off needs to recognize
+  const root = range.commonAncestorContainer
+  const scanRoot = root.nodeType === Node.TEXT_NODE ? root.parentNode! : root
+  const walker = document.createTreeWalker(scanRoot, NodeFilter.SHOW_TEXT)
+  let sawText = false
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    if (!range.intersectsNode(node)) continue
+    if (!node.textContent || !node.textContent.trim()) continue
+    sawText = true
+    const hasAll = Object.entries(styles).every(([prop, target]) => {
+      let el: HTMLElement | null = node!.parentElement
+      while (el) {
+        if (el.style?.getPropertyValue(prop) === target) return true
+        el = el.parentElement
+      }
+      return false
+    })
+    if (!hasAll) return false
+  }
+  return sawText
+}
+
+/** Removes `styles` from every element inside `root` that carries them,
+ *  unwrapping any element left with no inline style at all. Handles
+ *  formatting spread across multiple/nested spans, not just one clean span. */
+function stripStylesFromFragment(root: DocumentFragment, styles: Record<string, string>) {
+  const toUnwrap: HTMLElement[] = []
+  root.querySelectorAll<HTMLElement>("*").forEach(el => {
+    let touched = false
+    Object.entries(styles).forEach(([prop, target]) => {
+      if (el.style?.getPropertyValue(prop) === target) { el.style.removeProperty(prop); touched = true }
+    })
+    if (touched && el.getAttribute("style") === "") toUnwrap.push(el)
+  })
+  toUnwrap.forEach(el => {
+    const parent = el.parentNode
+    if (!parent) return
+    while (el.firstChild) parent.insertBefore(el.firstChild, el)
+    parent.removeChild(el)
+  })
+}
+
+/** Removes spans that ended up with no text at all — debris left behind when
+ *  extractContents() splits a partially-overlapped ancestor. */
+function pruneEmptySpans(root: ParentNode) {
+  root.querySelectorAll("span").forEach(el => {
+    if (!el.hasChildNodes() && !el.textContent) el.remove()
+  })
+}
+
+function toggleSpanStyle(container: HTMLElement, rawStyles: Record<string, string>) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
   const range = sel.getRangeAt(0)
   if (!container.contains(range.commonAncestorContainer)) return
 
-  const el = commonAncestorElement(range)
-  const alreadyApplied = !!el && el.tagName === "SPAN" && el.textContent === range.toString()
-    && Object.entries(styles).every(([k, v]) => el.style.getPropertyValue(k) === normalizedStyleValue(k, v))
+  const styles = Object.fromEntries(
+    Object.entries(rawStyles).map(([k, v]) => [k, normalizedStyleValue(k, v)])
+  )
 
-  if (alreadyApplied && el) {
-    const parent = el.parentNode!
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
-    parent.removeChild(el)
+  if (selectionFullyHasStyle(range, styles)) {
+    const frag = range.extractContents()
+    stripStylesFromFragment(frag, styles)
+    const insertedNodes = [...frag.childNodes]
+    range.insertNode(frag)
+    pruneEmptySpans(container)
+    if (insertedNodes.length) {
+      const newRange = document.createRange()
+      newRange.setStartBefore(insertedNodes[0])
+      newRange.setEndAfter(insertedNodes[insertedNodes.length - 1])
+      sel.removeAllRanges()
+      sel.addRange(newRange)
+    }
     return
   }
 
@@ -199,6 +270,7 @@ function toggleSpanStyle(container: HTMLElement, styles: Record<string, string>)
   const frag = range.extractContents()
   span.appendChild(frag)
   range.insertNode(span)
+  pruneEmptySpans(container)
   const newRange = document.createRange()
   newRange.selectNodeContents(span)
   sel.removeAllRanges()
