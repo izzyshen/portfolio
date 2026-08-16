@@ -116,21 +116,13 @@ const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: s
 // as the Graphite clips above.
 const PERI_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
   "problem-defining": [
-    { id: "seed-problem-defining-0", src: "/peri-clip-1-dashboard.mp4", caption: "Reviewing pending business inquiries on the dashboard" },
+    { id: "seed-inquiries-page-0", src: "/peri-clip-1-inquiries.mp4", caption: "The business inquiries page" },
   ],
   "design-decision": [
-    { id: "seed-design-decision-0", src: "/peri-clip-2-approve.mp4", caption: "AI recommends approving a well-matched inquiry" },
-    { id: "seed-design-decision-1", src: "/peri-clip-3-history.mp4", caption: "Opening the AI agent's chat history with the brand" },
-  ],
-  "engineer-decision": [
-    { id: "seed-engineer-decision-0", src: "/peri-clip-4-reject.mp4", caption: "AI flags and recommends rejecting a mismatched inquiry" },
-    { id: "seed-engineer-decision-1", src: "/peri-clip-5-ask.mp4", caption: "Asking Peri chat which pending offers need a decision" },
+    { id: "seed-agent-conversation-0", src: "/peri-clip-2-conversation.mp4", caption: "Conversing with the Peri agent" },
   ],
   "prototype-outcome": [
-    { id: "seed-prototype-outcome-0", src: "/peri-clip-6-recommend.mp4", caption: "Peri recommends which offer to accept, with reasoning" },
-  ],
-  "reflection": [
-    { id: "seed-reflection-0", src: "/peri-clip-7-confirm.mp4", caption: "Confirming the decision in one click" },
+    { id: "seed-approve-reject-0", src: "/peri-clip-3-approve-reject.mp4", caption: "Approving and rejecting deals" },
   ],
 }
 
@@ -146,15 +138,23 @@ function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
     : null
   if (!seedSet) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
+  // ids of every clip currently defined anywhere in this project's seed set —
+  // any *other* seed-prefixed block already saved (from a prior version of
+  // this seed set, e.g. an old demo cut that got re-edited into a different
+  // clip) is stale and gets dropped, not just "missing ones get added". Only
+  // seed- prefixed blocks are ever touched; anything a person added by hand
+  // keeps whatever id AddRow gave it and is never pruned.
+  const validSeedIds = new Set(Object.values(seedSet).flat().map(b => b.id))
   const sections = content.sections.map(s => {
+    const pruned = s.blocks.filter(b => !b.id.startsWith("seed-") || validSeedIds.has(b.id))
     const wanted = seedSet[s.id]
-    if (!wanted) return s
-    const present = new Set(s.blocks.map(b => b.id))
+    if (!wanted) return pruned.length === s.blocks.length ? s : { ...s, blocks: pruned }
+    const present = new Set(pruned.map(b => b.id))
     const missing: MediaBlock[] = wanted
       .filter(b => !dismissed.has(b.id) && !present.has(b.id))
       .map(b => ({ id: b.id, type: "video", src: b.src, caption: b.caption }))
-    if (!missing.length) return s
-    return { ...s, blocks: [...missing, ...s.blocks] }
+    if (!missing.length && pruned.length === s.blocks.length) return s
+    return { ...s, blocks: [...missing, ...pruned] }
   })
   return { ...content, sections }
 }
@@ -244,20 +244,94 @@ function normalizedStyleValue(prop: string, value: string): string {
   return probe.style.getPropertyValue(prop)
 }
 
-function toggleSpanStyle(container: HTMLElement, styles: Record<string, string>) {
+/** True only if EVERY bit of visible text in the range already carries all of
+ *  `styles` (via some ancestor within the range). A selection that only
+ *  partially overlaps existing formatting — e.g. it includes a trailing
+ *  space, or spans across a boundary — counts as "not fully applied", so the
+ *  button applies rather than removes, matching how Docs/Notion handle a
+ *  mixed selection. */
+function selectionFullyHasStyle(range: Range, styles: Record<string, string>): boolean {
+  // walk the LIVE dom, not a clone: Range.cloneContents() drops the wrapping
+  // ancestor entirely when start/end sit inside a single text node (the
+  // common case — e.g. the selection is exactly one already-formatted
+  // span's full text), which made this always report "not styled" for
+  // exactly the selections a toggle-off needs to recognize
+  const root = range.commonAncestorContainer
+  const scanRoot = root.nodeType === Node.TEXT_NODE ? root.parentNode! : root
+  const walker = document.createTreeWalker(scanRoot, NodeFilter.SHOW_TEXT)
+  let sawText = false
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    if (!range.intersectsNode(node)) continue
+    if (!node.textContent || !node.textContent.trim()) continue
+    sawText = true
+    const hasAll = Object.entries(styles).every(([prop, target]) => {
+      let el: HTMLElement | null = node!.parentElement
+      while (el) {
+        if (el.style?.getPropertyValue(prop) === target) return true
+        el = el.parentElement
+      }
+      return false
+    })
+    if (!hasAll) return false
+  }
+  return sawText
+}
+
+/** Removes `styles` from every element inside `root` that carries them,
+ *  unwrapping any element left with no inline style at all. Handles
+ *  formatting spread across multiple/nested spans, not just one clean span. */
+function stripStylesFromFragment(root: DocumentFragment, styles: Record<string, string>) {
+  const toUnwrap: HTMLElement[] = []
+  root.querySelectorAll<HTMLElement>("*").forEach(el => {
+    let touched = false
+    Object.entries(styles).forEach(([prop, target]) => {
+      if (el.style?.getPropertyValue(prop) === target) { el.style.removeProperty(prop); touched = true }
+    })
+    if (touched && el.getAttribute("style") === "") toUnwrap.push(el)
+  })
+  toUnwrap.forEach(el => {
+    const parent = el.parentNode
+    if (!parent) return
+    while (el.firstChild) parent.insertBefore(el.firstChild, el)
+    parent.removeChild(el)
+  })
+}
+
+/** Removes spans that ended up with no attributes and no text — debris left
+ *  behind when extractContents() splits a partially-overlapped ancestor. */
+function pruneEmptySpans(root: ParentNode) {
+  // any span with zero text is dead weight, whether or not it still carries
+  // a leftover style attribute (e.g. extractContents() splitting a span
+  // exactly at its boundary leaves an empty, still-styled clone behind)
+  root.querySelectorAll("span").forEach(el => {
+    if (!el.hasChildNodes() && !el.textContent) el.remove()
+  })
+}
+
+function toggleSpanStyle(container: HTMLElement, rawStyles: Record<string, string>) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
   const range = sel.getRangeAt(0)
   if (!container.contains(range.commonAncestorContainer)) return
 
-  const el = commonAncestorElement(range)
-  const alreadyApplied = !!el && el.tagName === "SPAN" && el.textContent === range.toString()
-    && Object.entries(styles).every(([k, v]) => el.style.getPropertyValue(k) === normalizedStyleValue(k, v))
+  const styles = Object.fromEntries(
+    Object.entries(rawStyles).map(([k, v]) => [k, normalizedStyleValue(k, v)])
+  )
 
-  if (alreadyApplied && el) {
-    const parent = el.parentNode!
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
-    parent.removeChild(el)
+  if (selectionFullyHasStyle(range, styles)) {
+    const frag = range.extractContents()
+    stripStylesFromFragment(frag, styles)
+    const insertedNodes = [...frag.childNodes]
+    range.insertNode(frag)
+    pruneEmptySpans(container)
+    if (insertedNodes.length) {
+      const newRange = document.createRange()
+      newRange.setStartBefore(insertedNodes[0])
+      newRange.setEndAfter(insertedNodes[insertedNodes.length - 1])
+      sel.removeAllRanges()
+      sel.addRange(newRange)
+    }
     return
   }
 
@@ -266,6 +340,7 @@ function toggleSpanStyle(container: HTMLElement, styles: Record<string, string>)
   const frag = range.extractContents()
   span.appendChild(frag)
   range.insertNode(span)
+  pruneEmptySpans(container)
   const newRange = document.createRange()
   newRange.selectNodeContents(span)
   sel.removeAllRanges()
