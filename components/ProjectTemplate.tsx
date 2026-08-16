@@ -165,6 +165,8 @@ function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
     ? GRAPHITE_DEMO_BLOCKS
     : isSlugOrVariant(slug, "peri-ai")
     ? PERI_DEMO_BLOCKS
+    : isSlugOrVariant(slug, "sixth")
+    ? SIXTH_DEMO_BLOCKS
     : null
   if (!seedSet) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
@@ -178,16 +180,25 @@ function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
    *  nothing changed, so unchanged sections keep their identity. */
   const applySeeds = (
     blocks: MediaBlock[],
-    wanted: { id: string; src: string; caption: string }[] = [],
+    wanted: SeedBlock[] = [],
   ): MediaBlock[] => {
     const validHere = new Set(wanted.map(b => b.id))
     const pruned = blocks.filter(b => !b.id.startsWith("seed-") || validHere.has(b.id))
     const present = new Set(pruned.map(b => b.id))
     const missing: MediaBlock[] = wanted
       .filter(b => !dismissed.has(b.id) && !present.has(b.id))
-      .map(b => ({ id: b.id, type: "video", src: b.src, caption: b.caption }))
-    if (!missing.length && pruned.length === blocks.length) return blocks
-    return [...missing, ...pruned]
+      .map(b => ({ id: b.id, type: "video", src: b.src, caption: b.caption, poster: b.poster }))
+    // a seed already saved from before it gained a poster (or whose poster
+    // path changed) keeps the stale value otherwise — the seed set is the
+    // source of truth for its own blocks, so re-apply it on every load
+    const synced = pruned.map(b => {
+      const seed = wanted.find(w => w.id === b.id)
+      return seed && b.poster !== seed.poster ? { ...b, poster: seed.poster } : b
+    })
+    const changed =
+      missing.length || synced.length !== blocks.length || synced.some((b, i) => b !== blocks[i])
+    if (!changed) return blocks
+    return [...missing, ...synced]
   }
 
   const heroBlocks = applySeeds(content.heroBlocks ?? [], seedSet[HERO_KEY])
