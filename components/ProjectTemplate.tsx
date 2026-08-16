@@ -80,6 +80,10 @@ function defaultContent(slug: string): ProjectContent {
 // adopt it instead of starting blank, so a rename never looks like data loss.
 const ORIGINAL_SLUGS = ["graphite", "peri-ai", "sixth", "drift"]
 
+function isSlugOrVariant(slug: string, base: string) {
+  return slug === base || slug.startsWith(`${base}-`)
+}
+
 function legacySlugFor(slug: string): string | null {
   if (ORIGINAL_SLUGS.includes(slug)) return null
   return ORIGINAL_SLUGS.find(s => slug.startsWith(`${s}-`)) ?? null
@@ -107,15 +111,43 @@ const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: s
   ],
 }
 
+// Short clips cut from the raw Peri.ai MVP demo recording, placed in the
+// section each moment actually illustrates. Same re-check/dismiss behavior
+// as the Graphite clips above.
+const PERI_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
+  "problem-defining": [
+    { id: "seed-problem-defining-0", src: "/peri-clip-1-dashboard.mp4", caption: "Reviewing pending business inquiries on the dashboard" },
+  ],
+  "design-decision": [
+    { id: "seed-design-decision-0", src: "/peri-clip-2-approve.mp4", caption: "AI recommends approving a well-matched inquiry" },
+    { id: "seed-design-decision-1", src: "/peri-clip-3-history.mp4", caption: "Opening the AI agent's chat history with the brand" },
+  ],
+  "engineer-decision": [
+    { id: "seed-engineer-decision-0", src: "/peri-clip-4-reject.mp4", caption: "AI flags and recommends rejecting a mismatched inquiry" },
+    { id: "seed-engineer-decision-1", src: "/peri-clip-5-ask.mp4", caption: "Asking Peri chat which pending offers need a decision" },
+  ],
+  "prototype-outcome": [
+    { id: "seed-prototype-outcome-0", src: "/peri-clip-6-recommend.mp4", caption: "Peri recommends which offer to accept, with reasoning" },
+  ],
+  "reflection": [
+    { id: "seed-reflection-0", src: "/peri-clip-7-confirm.mp4", caption: "Confirming the decision in one click" },
+  ],
+}
+
 function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
-  // matches "graphite" and any older/renamed variant like
+  // matches each project's base slug and any older/renamed variant like
   // "graphite-build-taste-with-ai" from back when editing a project's label
   // also regenerated its slug (fixed on the landing page, but existing
   // browsers may already have the renamed slug saved)
-  if (slug !== "graphite" && !slug.startsWith("graphite-")) return content
+  const seedSet = isSlugOrVariant(slug, "graphite")
+    ? GRAPHITE_DEMO_BLOCKS
+    : isSlugOrVariant(slug, "peri-ai")
+    ? PERI_DEMO_BLOCKS
+    : null
+  if (!seedSet) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
   const sections = content.sections.map(s => {
-    const wanted = GRAPHITE_DEMO_BLOCKS[s.id]
+    const wanted = seedSet[s.id]
     if (!wanted) return s
     const present = new Set(s.blocks.map(b => b.id))
     const missing: MediaBlock[] = wanted
@@ -762,11 +794,19 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [storageKey, slug])
 
+  // the debounce below means a save can be up to 500ms behind the latest
+  // edit — pendingRef always holds that latest value so it can be flushed
+  // immediately (bypassing the debounce) the instant the tab is hidden or
+  // closed, so a quick close right after typing can never lose that edit
+  const pendingRef = useRef<ProjectContent | null>(null)
+
   const persist = (next: ProjectContent) => {
+    pendingRef.current = next
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       try {
         localStorage.setItem(storageKey, JSON.stringify(next))
+        pendingRef.current = null
         setSaveError(false)
         setSavedMsg(true)
         setTimeout(() => setSavedMsg(false), 1200)
@@ -776,6 +816,26 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       }
     }, 500)
   }
+
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingRef.current) return
+      clearTimeout(timer.current)
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+        pendingRef.current = null
+      } catch {
+        // quota exceeded — nothing more we can do at unload time
+      }
+    }
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") flush() }
+    window.addEventListener("pagehide", flush)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [storageKey])
 
   const patch = (updates: Partial<ProjectContent>) => {
     setContent(prev => {

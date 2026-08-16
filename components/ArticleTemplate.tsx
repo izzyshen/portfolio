@@ -359,14 +359,38 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [storageKey, slug])
 
+  // the debounce below means a save can be up to 500ms behind the latest
+  // edit — pendingRef always holds that latest value so it can be flushed
+  // immediately (bypassing the debounce) the instant the tab is hidden or
+  // closed, so a quick close right after typing can never lose that edit
+  const pendingRef = useRef<ArticleContent | null>(null)
+
   const persist = (next: ArticleContent) => {
+    pendingRef.current = next
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       localStorage.setItem(storageKey, JSON.stringify(next))
+      pendingRef.current = null
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 1200)
     }, 500)
   }
+
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingRef.current) return
+      clearTimeout(timer.current)
+      localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+      pendingRef.current = null
+    }
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") flush() }
+    window.addEventListener("pagehide", flush)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [storageKey])
 
   const patch = (updates: Partial<ArticleContent>) => {
     setContent(prev => {

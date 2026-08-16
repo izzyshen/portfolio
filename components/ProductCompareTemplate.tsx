@@ -26,6 +26,9 @@ interface CompareContent {
   font: string
   summary: string
   columns: [Column, Column]
+  /** true once the one-time Smartlead content recovery has run, so it never
+   *  overwrites a later deliberate edit or re-deletion of that same column */
+  restoredSmartlead?: boolean
 }
 
 // ── defaults + migration ──────────────────────────────────────────────────────
@@ -54,11 +57,52 @@ function defaultContent(slug: string): CompareContent {
   }
 }
 
+// ── one-time content recovery ─────────────────────────────────────────────
+// The Smartlead column's text was accidentally deleted and had no backup —
+// reconstructed as best as possible from a screenshot the user shared right
+// before it happened. Runs once (see restoredSmartlead): if that column is
+// still empty, this fills it back in; if the user has since retyped
+// something else there, it's left alone and just marked handled.
+const SMARTLEAD_RESTORE_HTML =
+  '<div>completed product design&amp;engineer, launched</div>' +
+  '<div><br></div>' +
+  '<div>The Design:</div>' +
+  '<div>Important Feature 1: Location Auto Selection</div>' +
+  '<div>Before: one ad group was bound to a single destination (Website, 1P Form, or DM). Advertisers had to judge for themselves which path performed better, and in practice a given advertiser usually only ever used one.</div>' +
+  '<div><br></div>' +
+  '<div>After: Under the Leads goal, Optimization Location supports multi-select by default; the delivery system automatically picks the best path/component based on user preference.</div>' +
+  '<div><br></div>' +
+  '<div>Results: advv +24%, daily revenue increased from $4k to $39k</div>' +
+  '<div><br></div>' +
+  '<div>Search Design:</div>' +
+  '<div><br></div>' +
+  '<div><span style="font-weight: 700; color: rgb(17, 17, 17);">a) Use query intent analysis to make location selection more accurate</span></div>' +
+  '<div>Use query embeddings to understand user intent and serve ads across a more diverse set of ad locations.</div>' +
+  '<div><span style="font-style: italic;">Example:</span> 28 y/o &middot; female &middot; New York &middot; interest tags include "wedding dress, wedding ring" searches "wedding photography New York pricing"</div>' +
+  '<div>The model receives (user, query="wedding photography New York pricing", ad)</div>' +
+  '<div><br></div>' +
+  '<div style="color: rgb(153,153,153); font-size: 12px;">— reconstructed from a screenshot after an accidental deletion; anything below this point in the original could not be recovered</div>'
+
+function restoreSmartleadIfNeeded(content: CompareContent, slug: string): CompareContent {
+  if (slug !== "ai-commercial-product" || content.restoredSmartlead) return content
+  const [first, second] = content.columns
+  // the default column always has one placeholder block with empty html —
+  // that still counts as "nothing written here yet", not "has content"
+  const hasRealContent = second.blocks.some(b => b.kind === "image" || b.html.trim())
+  if (hasRealContent) return { ...content, restoredSmartlead: true }
+  const block: TextBlock = { id: `restore-${Date.now()}`, kind: "text", html: SMARTLEAD_RESTORE_HTML }
+  return {
+    ...content,
+    columns: [first, { ...second, blocks: [block] }],
+    restoredSmartlead: true,
+  }
+}
+
 /** Reuses the same storage key a plain ProjectTemplate visit would have used,
  *  so a title/tag/font already typed there before this template existed carries over. */
 function normalize(raw: unknown, slug: string): CompareContent {
   const base = defaultContent(slug)
-  if (!raw || typeof raw !== "object") return base
+  if (!raw || typeof raw !== "object") return restoreSmartleadIfNeeded(base, slug)
   const r = raw as Record<string, unknown>
 
   const cols = Array.isArray(r.columns) && r.columns.length === 2
@@ -68,13 +112,14 @@ function normalize(raw: unknown, slug: string): CompareContent {
       }))
     : base.columns
 
-  return {
+  return restoreSmartleadIfNeeded({
     tag: typeof r.tag === "string" ? r.tag : base.tag,
     title: typeof r.title === "string" ? r.title : base.title,
     font: typeof r.font === "string" ? r.font : base.font,
     summary: typeof r.summary === "string" ? r.summary : "",
     columns: [cols[0], cols[1]],
-  }
+    restoredSmartlead: r.restoredSmartlead === true,
+  }, slug)
 }
 
 /** Read the project list the landing page is actually showing. */
@@ -469,14 +514,38 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [storageKey, slug])
 
+  // the debounce below means a save can be up to 500ms behind the latest
+  // edit — pendingRef always holds that latest value so it can be flushed
+  // immediately (bypassing the debounce) the instant the tab is hidden or
+  // closed, so a quick close right after typing can never lose that edit
+  const pendingRef = useRef<CompareContent | null>(null)
+
   const persist = (next: CompareContent) => {
+    pendingRef.current = next
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       localStorage.setItem(storageKey, JSON.stringify(next))
+      pendingRef.current = null
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 1200)
     }, 500)
   }
+
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingRef.current) return
+      clearTimeout(timer.current)
+      localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+      pendingRef.current = null
+    }
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") flush() }
+    window.addEventListener("pagehide", flush)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [storageKey])
 
   const patch = (updates: Partial<CompareContent>) => {
     setContent(prev => {
