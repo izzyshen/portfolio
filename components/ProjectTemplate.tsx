@@ -396,8 +396,8 @@ const btnStyle: React.CSSProperties = {
 const VIDEO_WARN_BYTES = 15 * 1024 * 1024
 
 function AddRow({
-  onAddImage, onAddVideo,
-}: { onAddImage: (s: string) => void; onAddVideo: (u: string) => void }) {
+  visible, onAddImage, onAddVideo,
+}: { visible: boolean; onAddImage: (s: string) => void; onAddVideo: (u: string) => void }) {
   const imgRef = useRef<HTMLInputElement>(null)
   const videoFileRef = useRef<HTMLInputElement>(null)
   const [videoMode, setVideoMode] = useState(false)
@@ -421,7 +421,9 @@ function AddRow({
   }
 
   return (
-    <div style={{ marginTop: 14 }}>
+    // opacity, not display:none — keeps this row's height reserved at all
+    // times so nothing else in the section reflows when it fades in/out
+    <div style={{ marginTop: 14, opacity: visible ? 1 : 0, pointerEvents: visible ? "auto" : "none", transition: "opacity 0.15s" }}>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={() => imgRef.current?.click()} style={btnStyle}>+ IMAGE</button>
         <button onClick={() => videoFileRef.current?.click()} style={btnStyle}>+ VIDEO FILE</button>
@@ -454,6 +456,38 @@ function AddRow({
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Wraps a section's media blocks + AddRow, revealing the add-buttons only
+ *  while the cursor is anywhere over this area — keeps the page clean when
+ *  just viewing, without losing the ability to add more later. */
+function SectionMedia({
+  blocks, onDeleteBlock, onCaptionSave, onAddImage, onAddVideo,
+}: {
+  blocks: MediaBlock[]
+  onDeleteBlock: (block: MediaBlock) => void
+  onCaptionSave: (block: MediaBlock, caption: string) => void
+  onAddImage: (src: string) => void
+  onAddVideo: (url: string) => void
+}) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      style={{ marginTop: 20 }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {blocks.map(block => (
+        <BlockView
+          key={block.id}
+          block={block}
+          onDelete={() => onDeleteBlock(block)}
+          onCaptionSave={cap => onCaptionSave(block, cap)}
+        />
+      ))}
+      <AddRow visible={hover} onAddImage={onAddImage} onAddVideo={onAddVideo} />
     </div>
   )
 }
@@ -649,26 +683,19 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
               onSave={html => patchSection(si, { body: html })}
             />
 
-            <div style={{ marginTop: 20 }}>
-              {sec.blocks.map((block, bi) => (
-                <BlockView
-                  key={block.id}
-                  block={block}
-                  onDelete={() => deleteBlock(si, block)}
-                  onCaptionSave={cap =>
-                    patchSection(si, { blocks: sec.blocks.map((b, j) => j === bi ? { ...b, caption: cap } : b) })
-                  }
-                />
-              ))}
-              <AddRow
-                onAddImage={src =>
-                  patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "image", src, caption: "" }] })
-                }
-                onAddVideo={url =>
-                  patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "video", src: url, caption: "" }] })
-                }
-              />
-            </div>
+            <SectionMedia
+              blocks={sec.blocks}
+              onDeleteBlock={block => deleteBlock(si, block)}
+              onCaptionSave={(block, cap) =>
+                patchSection(si, { blocks: sec.blocks.map(b => b.id === block.id ? { ...b, caption: cap } : b) })
+              }
+              onAddImage={src =>
+                patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "image", src, caption: "" }] })
+              }
+              onAddVideo={url =>
+                patchSection(si, { blocks: [...sec.blocks, { id: `${Date.now()}`, type: "video", src: url, caption: "" }] })
+              }
+            />
           </section>
         ))}
       </div>
