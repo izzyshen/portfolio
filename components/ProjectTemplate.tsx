@@ -24,6 +24,9 @@ interface MediaBlock {
   type: "image" | "video"
   src: string
   caption: string
+  /** optional still for a video block, shown until hover starts playback —
+   *  worth setting on long/heavy clips that would otherwise sit black */
+  poster?: string
 }
 
 interface Section {
@@ -38,6 +41,9 @@ interface ProjectContent {
   title: string
   font: string
   coverSrc: string
+  /** media shown above the first section, before any section heading — for a
+   *  project whose whole story is one demo reel rather than per-stage clips */
+  heroBlocks?: MediaBlock[]
   sections: Section[]
   /** ids of seed blocks (e.g. Graphite's demo clips) someone deliberately
    *  deleted — tracked per-clip so an unrelated edit elsewhere, a storage
@@ -67,6 +73,7 @@ function defaultContent(slug: string): ProjectContent {
     title: titleFromSlug(slug),
     font: "'Afacad', sans-serif",
     coverSrc: "",
+    heroBlocks: [],
     sections: defaultSections(),
   }
 }
@@ -95,7 +102,11 @@ function legacySlugFor(slug: string): string | null {
 // missing (fresh browser, storage got reset, wasn't there before this feature
 // shipped) is added back, unless its id is in dismissedSeeds — i.e. someone
 // clicked its own ✕ on purpose. That's the only way a clip stays gone.
-const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
+type SeedBlock = { id: string; src: string; caption: string; poster?: string }
+/** keyed by section id, or HERO_KEY for the slot above the first section */
+type SeedSet = Record<string, SeedBlock[]>
+
+const GRAPHITE_DEMO_BLOCKS: SeedSet = {
   "problem-defining": [
     { id: "seed-problem-defining-0", src: "/graphite-clip-1-brief.mp4", caption: "Setting the creative brief" },
   ],
@@ -111,13 +122,37 @@ const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: s
   ],
 }
 
+/** Reserved seed key for the hero slot above the first section, as opposed to
+ *  the section ids every other key refers to. */
+const HERO_KEY = "__hero"
+
 // The full Peri.ai MVP walkthrough at 2x, kept as one continuous take rather
 // than cut into per-feature clips — cutting dropped the transitions between
-// moments, which is most of what the demo is showing. Loops on hover like the
+// moments, which is most of what the demo is showing. Sits in the hero slot so
+// it leads the page instead of belonging to one stage. Loops on hover like the
 // Graphite clips above, and follows the same re-check/dismiss behavior.
-const PERI_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
-  "prototype-outcome": [
-    { id: "seed-peri-mvp-demo-0", src: "/peri-mvp-demo.mp4", caption: "Full MVP walkthrough (2x) — inquiries, agent chat, and approving/rejecting deals" },
+// Its id differs from the earlier in-section one so that a browser which
+// dismissed it there doesn't suppress it in its new position.
+const PERI_DEMO_BLOCKS: SeedSet = {
+  [HERO_KEY]: [
+    { id: "seed-peri-hero-demo-0", src: "/peri-mvp-demo.mp4", caption: "Full MVP walkthrough (2x) — inquiries, agent chat, and approving/rejecting deals" },
+  ],
+}
+
+// The SIXTH concept film, in the hero slot so it opens the page ahead of
+// Problem Defining — it frames the whole project rather than evidencing one
+// stage. Re-encoded from the 5K HEVC master (which Chrome and Firefox can't
+// decode at all) down to 1440-wide H.264 with faststart, so it streams on
+// hover instead of forcing a 206MB download. Carries a poster because at
+// 15MB the first frame won't paint instantly on a cold load.
+const SIXTH_DEMO_BLOCKS: SeedSet = {
+  [HERO_KEY]: [
+    {
+      id: "seed-sixth-hero-film-0",
+      src: "/sixth-film.mp4",
+      poster: "/sixth-film-poster.jpg",
+      caption: "SIXTH — concept film",
+    },
   ],
 }
 
@@ -133,25 +168,34 @@ function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
     : null
   if (!seedSet) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
-  // ids of every clip currently defined anywhere in this project's seed set —
-  // any *other* seed-prefixed block already saved (from a prior version of
-  // this seed set, e.g. an old demo cut that got re-edited into a different
-  // clip) is stale and gets dropped, not just "missing ones get added". Only
-  // seed- prefixed blocks are ever touched; anything a person added by hand
-  // keeps whatever id AddRow gave it and is never pruned.
-  const validSeedIds = new Set(Object.values(seedSet).flat().map(b => b.id))
-  const sections = content.sections.map(s => {
-    const pruned = s.blocks.filter(b => !b.id.startsWith("seed-") || validSeedIds.has(b.id))
-    const wanted = seedSet[s.id]
-    if (!wanted) return pruned.length === s.blocks.length ? s : { ...s, blocks: pruned }
+
+  /** Reconciles one location's saved blocks against the seeds defined for that
+   *  location: adds any that are missing, and drops seed- blocks that no longer
+   *  belong here — either because the seed set stopped defining them at all, or
+   *  because it now defines them somewhere else (a clip moved from a section up
+   *  to the hero slot must not linger in both). Anything added by hand keeps the
+   *  id AddRow gave it and is never touched. Returns the original array when
+   *  nothing changed, so unchanged sections keep their identity. */
+  const applySeeds = (
+    blocks: MediaBlock[],
+    wanted: { id: string; src: string; caption: string }[] = [],
+  ): MediaBlock[] => {
+    const validHere = new Set(wanted.map(b => b.id))
+    const pruned = blocks.filter(b => !b.id.startsWith("seed-") || validHere.has(b.id))
     const present = new Set(pruned.map(b => b.id))
     const missing: MediaBlock[] = wanted
       .filter(b => !dismissed.has(b.id) && !present.has(b.id))
       .map(b => ({ id: b.id, type: "video", src: b.src, caption: b.caption }))
-    if (!missing.length && pruned.length === s.blocks.length) return s
-    return { ...s, blocks: [...missing, ...pruned] }
+    if (!missing.length && pruned.length === blocks.length) return blocks
+    return [...missing, ...pruned]
+  }
+
+  const heroBlocks = applySeeds(content.heroBlocks ?? [], seedSet[HERO_KEY])
+  const sections = content.sections.map(s => {
+    const blocks = applySeeds(s.blocks, seedSet[s.id])
+    return blocks === s.blocks ? s : { ...s, blocks }
   })
-  return { ...content, sections }
+  return { ...content, heroBlocks, sections }
 }
 
 /** Accepts old-format saved content (top-level body/blocks) and upgrades it. */
@@ -175,6 +219,7 @@ function normalize(raw: unknown, slug: string): ProjectContent {
     title: typeof r.title === "string" ? r.title : base.title,
     font: typeof r.font === "string" ? r.font : base.font,
     coverSrc: typeof r.coverSrc === "string" ? r.coverSrc : "",
+    heroBlocks: Array.isArray(r.heroBlocks) ? (r.heroBlocks as MediaBlock[]) : [],
     sections,
     dismissedSeeds: Array.isArray(r.dismissedSeeds) ? (r.dismissedSeeds as string[]) : [],
   }, slug)
@@ -628,8 +673,11 @@ function toEmbedUrl(url: string) {
 }
 
 /** Plays like a GIF: muted, looping, no controls — starts on hover (or tap on
- *  touch devices, since there's no hover event there) and resets when it ends. */
-function HoverVideo({ src }: { src: string }) {
+ *  touch devices, since there's no hover event there) and resets when it ends.
+ *  `poster` is optional: with preload="metadata" a browser isn't obliged to
+ *  paint a first frame, so a big clip can sit as a black box until hover. A
+ *  poster gives it something to show immediately for a few tens of KB. */
+function HoverVideo({ src, poster }: { src: string; poster?: string }) {
   const ref = useRef<HTMLVideoElement>(null)
   const [hover, setHover] = useState(false)
 
@@ -656,6 +704,7 @@ function HoverVideo({ src }: { src: string }) {
       <video
         ref={ref}
         src={src}
+        poster={poster}
         muted
         loop
         playsInline
@@ -735,7 +784,7 @@ function BlockView({
           />
         </div>
       ) : (
-        <HoverVideo src={block.src} />
+        <HoverVideo src={block.src} poster={block.poster} />
       )}
       <EditLine
         initial={block.caption || "Caption…"}
@@ -1052,6 +1101,52 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     })
   }
 
+  // hero slot (above the first section) — same operations as a section's media,
+  // just against the top-level heroBlocks list instead of a section's
+  const patchHero = (blocks: MediaBlock[]) => {
+    setContent(prev => {
+      if (!prev) return prev
+      pushUndo(prev)
+      const next = { ...prev, heroBlocks: blocks }
+      persist(next)
+      return next
+    })
+  }
+
+  const deleteHeroBlock = (block: MediaBlock) => {
+    setContent(prev => {
+      if (!prev) return prev
+      pushUndo(prev)
+      const dismissedSeeds = block.id.startsWith("seed-")
+        ? [...(prev.dismissedSeeds ?? []), block.id]
+        : prev.dismissedSeeds
+      const next = {
+        ...prev,
+        heroBlocks: (prev.heroBlocks ?? []).filter(b => b.id !== block.id),
+        dismissedSeeds,
+      }
+      persist(next)
+      return next
+    })
+  }
+
+  const reorderHeroBlock = (fromId: string, toId: string) => {
+    setContent(prev => {
+      if (!prev) return prev
+      const current = prev.heroBlocks ?? []
+      const from = current.findIndex(b => b.id === fromId)
+      const to = current.findIndex(b => b.id === toId)
+      if (from === -1 || to === -1) return prev
+      pushUndo(prev)
+      const heroBlocks = [...current]
+      const [moved] = heroBlocks.splice(from, 1)
+      heroBlocks.splice(to, 0, moved)
+      const next = { ...prev, heroBlocks }
+      persist(next)
+      return next
+    })
+  }
+
   // deleting a seeded clip (id starts with "seed-") records it as dismissed so
   // seedDemoClips won't re-add just that one; deleting anything else is unaffected
   const deleteBlock = (si: number, block: MediaBlock) => {
@@ -1151,6 +1246,24 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
         />
 
         <CoverZone src={content.coverSrc} onChange={s => patch({ coverSrc: s })} />
+
+        {/* hero media — sits above the first section heading */}
+        <div style={{ marginBottom: 56 }}>
+          <SectionMedia
+            blocks={content.heroBlocks ?? []}
+            onDeleteBlock={deleteHeroBlock}
+            onCaptionSave={(block, cap) =>
+              patchHero((content.heroBlocks ?? []).map(b => b.id === block.id ? { ...b, caption: cap } : b))
+            }
+            onAddImage={src =>
+              patchHero([...(content.heroBlocks ?? []), { id: `${Date.now()}`, type: "image", src, caption: "" }])
+            }
+            onAddVideo={url =>
+              patchHero([...(content.heroBlocks ?? []), { id: `${Date.now()}`, type: "video", src: url, caption: "" }])
+            }
+            onReorder={reorderHeroBlock}
+          />
+        </div>
 
         {/* sections */}
         {content.sections.map((sec, si) => (
