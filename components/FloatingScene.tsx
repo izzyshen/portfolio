@@ -40,6 +40,62 @@ const TAG_POOL = [
 
 const PATTERNS_LIST: PatternType[] = ["dots", "grid", "rings", "code"]
 
+// ── live project data ─────────────────────────────────────────────────────────
+// The scene used to zip a static, build-time PROJECTS list into its fixed
+// slot positions — so a renamed project never updated here and a newly added
+// one never appeared at all. Now it reads whatever's actually in the landing
+// page's "Previous Projects" section, same as the project rail elsewhere.
+interface LiveProject { title: string; tag: string; slug: string }
+
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled"
+
+// the 4 projects this site shipped with — used both as a fallback before
+// portfolio-home exists, and to recover a thumbnail/title saved under the
+// original slug if a project's slug later drifted from an old label edit
+const ORIGINAL_SLUGS = ["graphite", "peri-ai", "sixth", "drift"]
+
+function legacySlugFor(slug: string): string | null {
+  if (ORIGINAL_SLUGS.includes(slug)) return null
+  return ORIGINAL_SLUGS.find(s => slug.startsWith(`${s}-`)) ?? null
+}
+
+function readLiveProjects(): LiveProject[] {
+  const fallback: LiveProject[] = PROJECTS
+  try {
+    const raw = localStorage.getItem("portfolio-home")
+    if (!raw) return fallback
+    const home = JSON.parse(raw)
+    const sec = home?.sections?.find((s: { isProjects?: boolean }) => s.isProjects)
+    if (!sec?.items?.length) return fallback
+    return sec.items.map((it: { label: string; slug?: string }) => ({
+      title: it.label,
+      tag: "project",
+      slug: it.slug ?? slugify(it.label),
+    }))
+  } catch {
+    return fallback
+  }
+}
+
+function buildCards(liveProjects: LiveProject[]): CardDef[] {
+  return POSITIONS.map((pos, i) => {
+    const real = i < liveProjects.length ? liveProjects[i] : null
+    const sizeVar = 1 + ((i * 13) % 7 - 3) / 80
+    return {
+      id:      real ? real.slug : `${TITLE_POOL[i % TITLE_POOL.length].toLowerCase()}-${i}`,
+      title:   real ? real.title : TITLE_POOL[i % TITLE_POOL.length],
+      tag:     real ? `// ${real.tag}` : `// ${TAG_POOL[i % TAG_POOL.length]}`,
+      x: pos.x, y: pos.y, z: pos.z,
+      width:   Math.round(265 * sizeVar),
+      height:  Math.round(170 * sizeVar),
+      pattern: PATTERNS_LIST[i % PATTERNS_LIST.length],
+      speed:   6.5 + ((i * 11) % 7),
+      amount:  8  + ((i * 17) % 10),
+    }
+  })
+}
+
 function makeShell(radius: number, rotY = 0) {
   const phi = (1 + Math.sqrt(5)) / 2
   const norm = Math.sqrt(1 + phi * phi)
@@ -84,21 +140,8 @@ const POSITIONS = [
   ...makeShell(2900, 18),
 ]
 
-const CARDS: CardDef[] = POSITIONS.map((pos, i) => {
-  const real = i < PROJECTS.length ? PROJECTS[i] : null
-  const sizeVar = 1 + ((i * 13) % 7 - 3) / 80
-  return {
-    id:      real ? real.slug : `${TITLE_POOL[i % TITLE_POOL.length].toLowerCase()}-${i}`,
-    title:   real ? real.title : TITLE_POOL[i % TITLE_POOL.length],
-    tag:     real ? `// ${real.tag}` : `// ${TAG_POOL[i % TAG_POOL.length]}`,
-    x: pos.x, y: pos.y, z: pos.z,
-    width:   Math.round(265 * sizeVar),
-    height:  Math.round(170 * sizeVar),
-    pattern: PATTERNS_LIST[i % PATTERNS_LIST.length],
-    speed:   6.5 + ((i * 11) % 7),
-    amount:  8  + ((i * 17) % 10),
-  }
-})
+// CARDS is built per-mount from live data now (see buildCards above) since it
+// depends on localStorage, which doesn't exist at module-eval time.
 
 const PATTERNS: Record<PatternType, React.CSSProperties> = {
   dots: {
@@ -132,36 +175,55 @@ export default function FloatingScene() {
   const isNavigating  = useRef(false)
   const router        = useRouter()
 
+  // ── Cards — built from live project data, not a hardcoded list ───────────
+  const cardsBuilt = useRef(false)
+  const [cards, setCards] = useState<CardDef[] | null>(null)
+
   // ── Thumbnails (card background images) ──────────────────────────────────
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
 
-  // ── Card titles — can be overridden by project template edits ────────────
+  // ── Card titles/tags — overridden by whatever's on the project's own page ─
   const [cardTitles, setCardTitles] = useState<Record<string, string>>({})
+  const [cardTags, setCardTags] = useState<Record<string, string>>({})
 
   useEffect(() => {
+    const liveCards = buildCards(readLiveProjects())
+    setCards(liveCards)
+
     const loadedThumbs: Record<string, string> = {}
     const loadedTitles: Record<string, string> = {}
-    CARDS.forEach(c => {
+    const loadedTags: Record<string, string> = {}
+    liveCards.forEach(c => {
+      // fall back to a project's ORIGINAL default slug (graphite, peri-ai, sixth,
+      // drift) for thumbnails/overrides saved before a label edit drifted its
+      // slug — so a rename never makes an already-uploaded thumbnail vanish
+      const legacy = legacySlugFor(c.id)
       const thumb = localStorage.getItem(`portfolio-card-thumb-${c.id}`)
+        ?? (legacy ? localStorage.getItem(`portfolio-card-thumb-${legacy}`) : null)
       if (thumb) loadedThumbs[c.id] = thumb
+
       const proj = localStorage.getItem(`portfolio-project-${c.id}`)
+        ?? (legacy ? localStorage.getItem(`portfolio-project-${legacy}`) : null)
       if (proj) {
         try {
           const p = JSON.parse(proj)
           if (p.title) loadedTitles[c.id] = p.title
+          if (p.tag) loadedTags[c.id] = p.tag
         } catch {}
       }
     })
     setThumbs(loadedThumbs)
     setCardTitles(loadedTitles)
+    setCardTags(loadedTags)
 
-    // Live-sync if user edits title in another tab
+    // Live-sync if user edits title/tag in another tab
     const onStorage = (e: StorageEvent) => {
       if (e.key?.startsWith("portfolio-project-") && e.newValue) {
         try {
           const slug = e.key.replace("portfolio-project-", "")
           const p = JSON.parse(e.newValue)
           if (p.title) setCardTitles(prev => ({ ...prev, [slug]: p.title }))
+          if (p.tag) setCardTags(prev => ({ ...prev, [slug]: p.tag }))
         } catch {}
       }
     }
@@ -176,12 +238,14 @@ export default function FloatingScene() {
 
   // ── 3D scene ──────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!cards || cardsBuilt.current) return
     if (!sceneRef.current || !worldRef.current) return
+    cardsBuilt.current = true
 
     const ctx = gsap.context(() => {
       anchorRefs.current.forEach((anchor, i) => {
         if (!anchor) return
-        const c = CARDS[i]
+        const c = cards[i]
         gsap.set(anchor, {
           xPercent: -50, yPercent: -50,
           x: c.x, y: c.y, z: c.z,
@@ -193,7 +257,7 @@ export default function FloatingScene() {
 
       floatRefs.current.forEach((floater, i) => {
         if (!floater) return
-        const c = CARDS[i]
+        const c = cards[i]
         gsap.fromTo(floater,
           { y: -c.amount / 2 },
           { y: c.amount / 2, duration: c.speed, ease: "sine.inOut", yoyo: true, repeat: -1, delay: (i % 5) * 0.4 }
@@ -262,10 +326,10 @@ export default function FloatingScene() {
 
         if (!isNavigating.current) {
           const elapsed = (gsap.ticker.time - entryStart) * 1000
-          for (let i = 0; i < CARDS.length; i++) {
+          for (let i = 0; i < cards.length; i++) {
             const anchor = anchorRefs.current[i]
             if (!anchor) continue
-            const c = CARDS[i]
+            const c = cards[i]
             const t = Math.min(1, Math.max(0, (elapsed - (40 + i * 18)) / 1400))
             const entry = 1 - Math.pow(1 - t, 3)
             const dz   = c.z + camera.z
@@ -293,7 +357,7 @@ export default function FloatingScene() {
     }, sceneRef)
 
     return () => ctx.revert()
-  }, [])
+  }, [cards])
 
   const handleClick = (id: string, index: number) => {
     if (!anchorRefs.current[index] || isNavigating.current) return
@@ -341,7 +405,7 @@ export default function FloatingScene() {
         color: "rgba(255,255,255,0.25)", fontSize: 10,
         letterSpacing: "0.18em", fontFamily: "monospace", pointerEvents: "none",
       }}>
-        {CARDS.length} projects // drift
+        {POSITIONS.length} projects // drift
       </p>
 
       <div style={{
@@ -364,7 +428,7 @@ export default function FloatingScene() {
 
       {/* 3D World */}
       <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
-        {CARDS.map((c, i) => (
+        {(cards ?? []).map((c, i) => (
           <div
             key={i}
             ref={el => { anchorRefs.current[i] = el }}
@@ -428,7 +492,7 @@ export default function FloatingScene() {
                   background: thumbs[c.id] ? "rgba(255,255,255,0.88)" : "transparent",
                 }}>
                   <p style={{ margin: 0, color: "rgba(0,0,0,0.35)", fontSize: 9, letterSpacing: "0.15em", fontFamily: "monospace", marginBottom: 3 }}>
-                    {c.tag}
+                    {cardTags[c.id] ? `// ${cardTags[c.id]}` : c.tag}
                   </p>
                   <p style={{ margin: 0, color: "rgba(0,0,0,0.75)", fontSize: 12, letterSpacing: "0.04em" }}>
                     {cardTitles[c.id] || c.title}

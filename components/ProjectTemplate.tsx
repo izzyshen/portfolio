@@ -71,6 +71,20 @@ function defaultContent(slug: string): ProjectContent {
   }
 }
 
+// ── legacy-slug content recovery ─────────────────────────────────────────────
+// A project's slug used to be regenerated every time its landing-page label
+// was edited (fixed now — slug is assigned once and frozen), so a browser
+// that visited before the fix may still have a drifted slug like
+// "graphite-build-taste-with-ai" saved. If nothing exists yet under that
+// drifted slug, check whether the ORIGINAL default slug has content — if so,
+// adopt it instead of starting blank, so a rename never looks like data loss.
+const ORIGINAL_SLUGS = ["graphite", "peri-ai", "sixth", "drift"]
+
+function legacySlugFor(slug: string): string | null {
+  if (ORIGINAL_SLUGS.includes(slug)) return null
+  return ORIGINAL_SLUGS.find(s => slug.startsWith(`${s}-`)) ?? null
+}
+
 // ── content seeds ─────────────────────────────────────────────────────────
 // Short clips cut from the raw Graphite demo recording, placed in the section
 // each moment actually illustrates. Re-checked on every load: any clip that's
@@ -507,7 +521,11 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   useEffect(() => {
     const load = () => {
       try {
-        const raw = localStorage.getItem(storageKey)
+        let raw = localStorage.getItem(storageKey)
+        if (!raw) {
+          const legacySlug = legacySlugFor(slug)
+          if (legacySlug) raw = localStorage.getItem(`portfolio-project-${legacySlug}`)
+        }
         setContent(normalize(raw ? JSON.parse(raw) : null, slug))
       } catch {
         setContent(defaultContent(slug))
