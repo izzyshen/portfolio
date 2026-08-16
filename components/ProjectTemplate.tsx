@@ -111,18 +111,13 @@ const GRAPHITE_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: s
   ],
 }
 
-// Short clips cut from the raw Peri.ai MVP demo recording, placed in the
-// section each moment actually illustrates. Same re-check/dismiss behavior
-// as the Graphite clips above.
+// The full Peri.ai MVP walkthrough at 2x, kept as one continuous take rather
+// than cut into per-feature clips — cutting dropped the transitions between
+// moments, which is most of what the demo is showing. Loops on hover like the
+// Graphite clips above, and follows the same re-check/dismiss behavior.
 const PERI_DEMO_BLOCKS: Record<string, { id: string; src: string; caption: string }[]> = {
-  "problem-defining": [
-    { id: "seed-inquiries-page-0", src: "/peri-clip-1-inquiries.mp4", caption: "The business inquiries page" },
-  ],
-  "design-decision": [
-    { id: "seed-agent-conversation-0", src: "/peri-clip-2-conversation.mp4", caption: "Conversing with the Peri agent" },
-  ],
   "prototype-outcome": [
-    { id: "seed-approve-reject-0", src: "/peri-clip-3-approve-reject.mp4", caption: "Approving and rejecting deals" },
+    { id: "seed-peri-mvp-demo-0", src: "/peri-mvp-demo.mp4", caption: "Full MVP walkthrough (2x) — inquiries, agent chat, and approving/rejecting deals" },
   ],
 }
 
