@@ -48,6 +48,9 @@ interface ProjectContent {
   tag: string
   title: string
   font: string
+  /** free text under the title, before any section — the one-or-two-line
+   *  framing of what the project is, the way the compare pages already do it */
+  summary?: string
   coverSrc: string
   /** media shown above the first section, before any section heading — for a
    *  project whose whole story is one demo reel rather than per-stage clips */
@@ -80,6 +83,7 @@ function defaultContent(slug: string): ProjectContent {
     tag: "project",
     title: titleFromSlug(slug),
     font: "'Afacad', sans-serif",
+    summary: "",
     coverSrc: "",
     heroBlocks: [],
     sections: defaultSections(),
@@ -237,6 +241,7 @@ function normalize(raw: unknown, slug: string): ProjectContent {
     tag: typeof r.tag === "string" ? r.tag : base.tag,
     title: typeof r.title === "string" ? r.title : base.title,
     font: typeof r.font === "string" ? r.font : base.font,
+    summary: typeof r.summary === "string" ? r.summary : "",
     coverSrc: typeof r.coverSrc === "string" ? r.coverSrc : "",
     heroBlocks: Array.isArray(r.heroBlocks) ? (r.heroBlocks as MediaBlock[]) : [],
     sections,
@@ -621,18 +626,27 @@ function FormatToolbar({ containerRef }: { containerRef: React.RefObject<HTMLDiv
 }
 
 // ── editable multi-line body ──────────────────────────────────────────────────
-const PLACEHOLDER = '<span data-ph style="color:#c9c9c9;pointer-events:none">Write something here…</span>'
+const placeholderHtml = (text: string) =>
+  `<span data-ph style="color:#c9c9c9;pointer-events:none">${text}</span>`
+
+const PLACEHOLDER = placeholderHtml("Write something here…")
 
 function EditBody({
-  initial, style, onSave,
-}: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
+  initial, style, onSave, placeholder,
+}: {
+  initial: string
+  style: React.CSSProperties
+  onSave: (v: string) => void
+  placeholder?: string
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const empty = useRef(!initial)
+  const ph = placeholder ? placeholderHtml(placeholder) : PLACEHOLDER
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    ref.current.innerHTML = initial || PLACEHOLDER
+    ref.current.innerHTML = initial || ph
   }, [])
 
   return (
@@ -650,8 +664,8 @@ function EditBody({
         onBlur={e => {
           const html = e.currentTarget.innerHTML
           empty.current = !html
-          if (!html) e.currentTarget.innerHTML = PLACEHOLDER
-          onSave(html === PLACEHOLDER ? "" : html)
+          if (!html) e.currentTarget.innerHTML = ph
+          onSave(html === ph ? "" : html)
         }}
         style={{ outline: "none", cursor: "text", ...style }}
       />
@@ -1492,8 +1506,21 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
         {/* title */}
         <EditLine
           initial={content.title}
-          style={{ fontSize: 30, fontWeight: 400, letterSpacing: "0.02em", color: "#111", marginBottom: 36 }}
+          style={{ fontSize: 30, fontWeight: 400, letterSpacing: "0.02em", color: "#111", marginBottom: 14 }}
           onSave={v => patch({ title: v || content.title })}
+        />
+
+        {/* summary — the framing line(s) under the title, matching the
+         *  compare-style project pages */}
+        <EditBody
+          initial={content.summary ?? ""}
+          placeholder="Add a short description…"
+          style={{
+            fontSize: 15, color: "#555", lineHeight: 1.6,
+            paddingBottom: 20, marginBottom: 40,
+            borderBottom: "1px solid #ebe9e4",
+          }}
+          onSave={html => patch({ summary: html })}
         />
 
         <CoverZone src={content.coverSrc} onChange={s => patch({ coverSrc: s })} />
