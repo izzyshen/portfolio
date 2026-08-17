@@ -168,6 +168,16 @@ const SIXTH_DEMO_BLOCKS: SeedSet = {
   ],
 }
 
+// The Drift routing-system walkthrough, trimmed to drop its first 5 seconds
+// (dead air before the demo actually starts). Sits in the hero slot so it
+// opens the page ahead of Problem Defining, same as the other projects' lead
+// clips.
+const DRIFT_DEMO_BLOCKS: SeedSet = {
+  [HERO_KEY]: [
+    { id: "seed-drift-hero-demo-0", src: "/drift-hero-demo.mp4", caption: "Drift — routing system walkthrough" },
+  ],
+}
+
 function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
   // matches each project's base slug and any older/renamed variant like
   // "graphite-build-taste-with-ai" from back when editing a project's label
@@ -179,6 +189,8 @@ function seedDemoClips(content: ProjectContent, slug: string): ProjectContent {
     ? PERI_DEMO_BLOCKS
     : isSlugOrVariant(slug, "sixth")
     ? SIXTH_DEMO_BLOCKS
+    : isSlugOrVariant(slug, "drift")
+    ? DRIFT_DEMO_BLOCKS
     : null
   if (!seedSet) return content
   const dismissed = new Set(content.dismissedSeeds ?? [])
