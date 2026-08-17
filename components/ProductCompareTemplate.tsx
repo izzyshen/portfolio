@@ -9,6 +9,7 @@ import {
   migrateDataUrl,
   pruneOrphanedMedia,
 } from "@/lib/mediaStore"
+import { expandAbTable, collapseAbTable } from "@/lib/abTable"
 
 const FONT_OPTIONS = [
   { label: "Afacad", value: "'Afacad', sans-serif" },
@@ -454,7 +455,7 @@ function EditBody({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    ref.current.innerHTML = initial || ph
+    ref.current.innerHTML = initial ? expandAbTable(initial) : ph
   }, [])
 
   return (
@@ -470,7 +471,9 @@ function EditBody({
           }
         }}
         onBlur={e => {
-          const html = e.currentTarget.innerHTML
+          // the table is display-only: collapse it back to its marker so what
+          // gets persisted is the text the user actually typed
+          const html = collapseAbTable(e.currentTarget.innerHTML)
           empty.current = !html
           if (!html) e.currentTarget.innerHTML = ph
           onSave(html === ph ? "" : html)
