@@ -5,7 +5,8 @@ import Link from "next/link"
 
 // ── types ─────────────────────────────────────────────────────────────────────
 interface HourEntry { label: string; pct: number; color: string }
-interface RowItem    { id: string; label: string; slug?: string }
+interface LinkRef    { text: string; url: string }
+interface RowItem    { id: string; label: string; slug?: string; links?: LinkRef[] }
 interface SectionDef { id: string; label: string; isProjects?: boolean; isArticles?: boolean; items: RowItem[] }
 
 interface HomeData {
@@ -45,9 +46,10 @@ const DEFAULT: HomeData = {
       { id: "c3", label: "Video"       },
     ]},
     { id: "awards", label: "Awards", items: [
-      { id: "a1", label: "President Innovation Challenge" },
-      { id: "a2", label: "Photography" },
-      { id: "a3", label: "Video"       },
+      { id: "a1", label: "Hardmode Winner - Featured in Anthropic Post" },
+      { id: "a2", label: "President Innovation Challenge Semifinalist"  },
+      { id: "a3", label: "MIT sandbox Spring cohort"                    },
+      { id: "a4", label: "Hult Prize National Finalist"                 },
     ]},
   ],
 }
@@ -91,6 +93,64 @@ function linkify(text: string) {
     out += escapeHtml(text.slice(last, m.index))
     out += `<a contenteditable="false" href="${href}"${attrs} style="${style}">${escapeHtml(word)}</a>`
     last = m.index + word.length
+  }
+  return out + escapeHtml(text.slice(last))
+}
+
+// ── external links carried by award rows ─────────────────────────────────────
+const PIC_URL = "https://innovationlabs.harvard.edu/presidents-innovation-challenge"
+
+const AWARD_LINKS: Record<string, LinkRef[]> = {
+  "hardmode winner featured in anthropic post": [
+    { text: "Hardmode Winner", url: "https://hardmode.media.mit.edu/" },
+    { text: "Anthropic Post",  url: "https://www.instagram.com/p/DV_fkY-FGOn/?img_index=4" },
+  ],
+  "president innovation challenge semifinalist": [
+    { text: "President Innovation Challenge Semifinalist", url: PIC_URL },
+  ],
+  // the label this row carried before the awards list was rewritten
+  "president innovation challenge": [
+    { text: "President Innovation Challenge", url: PIC_URL },
+  ],
+  "mit sandbox spring cohort": [
+    { text: "MIT sandbox Spring cohort", url: "https://sandbox.mit.edu/" },
+  ],
+  "hult prize national finalist": [
+    { text: "Hult Prize National Finalist", url: "https://www.hultprizenationals.com/" },
+  ],
+}
+
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+const escapeRe  = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** Give award rows their external links; rows that already carry some keep them. */
+const withAwardLinks = (sections: SectionDef[]) =>
+  sections.map(sec => sec.id !== "awards" ? sec : {
+    ...sec,
+    items: sec.items.map(it => {
+      if (it.links) return it
+      const links = AWARD_LINKS[normalize(it.label)]
+      return links ? { ...it, links } : it
+    }),
+  })
+
+/** Anchor every known phrase inside a row label, leaving the rest plain text. */
+function linkifyLabel(text: string, links?: LinkRef[]) {
+  if (!links?.length) return escapeHtml(text)
+  const style = "color:#222;border-bottom:1px solid #cfcdc7;text-decoration:none"
+  // longest phrase first, so a phrase that contains another still wins
+  const ordered = [...links].sort((a, b) => b.text.length - a.text.length)
+  const re = new RegExp(ordered.map(l => escapeRe(l.text)).join("|"), "gi")
+  let out = ""
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) {
+    const hit = m[0]
+    const link = ordered.find(l => l.text.toLowerCase() === hit.toLowerCase())
+    if (!link) continue
+    out += escapeHtml(text.slice(last, m.index))
+    out += `<a contenteditable="false" href="${link.url}" target="_blank" rel="noopener noreferrer" style="${style}">${escapeHtml(hit)}</a>`
+    last = m.index + hit.length
   }
   return out + escapeHtml(text.slice(last))
 }
@@ -139,6 +199,36 @@ function EditLine({
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
+      style={{ outline: "none", cursor: "text", ...style }}
+    />
+  )
+}
+
+// ── editable line that keeps its inline external links live ──────────────────
+function EditRichLine({
+  initial, links, style, onSave,
+}: { initial: string; links?: LinkRef[]; style?: React.CSSProperties; onSave: (v: string) => void }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ref.current) ref.current.innerHTML = linkifyLabel(initial, links) }, [])
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onClick={e => {
+        // anchors sit inside a contentEditable region, so navigate by hand
+        const a = (e.target as HTMLElement).closest("a")
+        if (!a) return
+        e.preventDefault()
+        window.open(a.href, "_blank", "noopener")
+      }}
+      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
+      onBlur={e => {
+        const text = e.currentTarget.textContent ?? ""
+        e.currentTarget.innerHTML = linkifyLabel(text, links)
+        onSave(text)
+      }}
       style={{ outline: "none", cursor: "text", ...style }}
     />
   )
@@ -215,15 +305,28 @@ function RowEl({
       >
         ⠿
       </span>
-      <Link
-        href={`${basePath}/${item.slug ?? slugify(item.label)}`}
-        title="open"
-        style={{ color: "#aaa", fontSize: 12, flexShrink: 0, textDecoration: "none" }}
-      >
-        →
-      </Link>
-      <EditLine
+      {item.links?.length ? (
+        <a
+          href={item.links[0].url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="open"
+          style={{ color: "#aaa", fontSize: 12, flexShrink: 0, textDecoration: "none" }}
+        >
+          →
+        </a>
+      ) : (
+        <Link
+          href={`${basePath}/${item.slug ?? slugify(item.label)}`}
+          title="open"
+          style={{ color: "#aaa", fontSize: 12, flexShrink: 0, textDecoration: "none" }}
+        >
+          →
+        </Link>
+      )}
+      <EditRichLine
         initial={item.label}
+        links={item.links}
         onSave={onSave}
         style={{ fontSize: 13, color: "#222", letterSpacing: "0.01em", flex: 1 }}
       />
@@ -275,9 +378,11 @@ export default function Home() {
       // a Thoughts section saved before the article template existed still
       // routes through /projects — flip it so old data gets the new template too
       saved.sections = saved.sections.map(s => s.id === "thoughts" ? { ...s, isArticles: true } : s)
+      // awards saved before they carried links get them by matching their label
+      saved.sections = withAwardLinks(saved.sections)
       setData(saved)
     } catch {
-      setData(DEFAULT)
+      setData({ ...DEFAULT, sections: withAwardLinks(DEFAULT.sections) })
     }
   }, [])
 
