@@ -1,0 +1,881 @@
+{
+ "home": {
+  "name": "Izzy Shen",
+  "headline": "Hi I'm Izzy, I build and own products from 0 to 100...",
+  "bio": "I think about making positive impact at scale through technology alot. I believe together, we can build a crazy world. I'm a student @Harvard, founder, prev AI PM @Tiktok, currently exploring at the intersection of design and engineering in the context of AI. Would love to connect with creative souls, you can reach me through Linkedin or Email. ",
+  "hours": [
+   {
+    "label": "Build and Think",
+    "pct": 40,
+    "color": "#111"
+   },
+   {
+    "label": "Sleep",
+    "pct": 33,
+    "color": "#555"
+   },
+   {
+    "label": "Sport",
+    "pct": 12,
+    "color": "#999"
+   },
+   {
+    "label": "Connect",
+    "pct": 15,
+    "color": "#ccc"
+   }
+  ],
+  "sections": [
+   {
+    "id": "projects",
+    "label": "Previous Projects",
+    "isProjects": true,
+    "items": [
+     {
+      "id": "l5ir3a",
+      "label": "AI Commercial Product",
+      "slug": "ai-commercial-product"
+     },
+     {
+      "id": "sixth",
+      "label": "Sixth -- Embodied Intelligence",
+      "slug": "sixth-embodied-intelligence"
+     },
+     {
+      "id": "graphite",
+      "label": "Graphite -- Build Taste with AI",
+      "slug": "graphite-build-taste-with-ai"
+     },
+     {
+      "id": "drift",
+      "label": "Drift -- ML on routing system",
+      "slug": "drift-rl-on-routing-system"
+     },
+     {
+      "id": "peri-ai",
+      "label": "Peri.ai -- Agentic Creator Tool",
+      "slug": "peri-ai-agentic-creator-tool"
+     }
+    ]
+   },
+   {
+    "id": "thoughts",
+    "label": "Blog",
+    "items": [
+     {
+      "id": "t1",
+      "label": "Creative Paradigm in AI Era"
+     },
+     {
+      "id": "09dkqm",
+      "label": "Telepathy Encode and Decode",
+      "slug": "telepathy-encode-and-decode"
+     },
+     {
+      "id": "sy66zo",
+      "label": "Robotics like Lego",
+      "slug": "energy-consumption-for-data-centers"
+     },
+     {
+      "id": "99egny",
+      "label": "Fleet simulation",
+      "slug": "fleet-simulation"
+     },
+     {
+      "id": "p7jkh6",
+      "label": "How to actually build a LLM?",
+      "slug": "item-p7jkh6"
+     },
+     {
+      "id": "m8v3mg",
+      "label": "AI Co-Thinking content",
+      "slug": "item-m8v3mg"
+     }
+    ],
+    "isArticles": true
+   },
+   {
+    "id": "creatives",
+    "label": "Exploration",
+    "items": [
+     {
+      "id": "c1",
+      "label": "Art"
+     },
+     {
+      "id": "c2",
+      "label": "Photography"
+     },
+     {
+      "id": "c3",
+      "label": "Video"
+     }
+    ]
+   },
+   {
+    "id": "awards",
+    "label": "Awards",
+    "items": [
+     {
+      "id": "a1",
+      "label": "Hardmode Winner - Featured in Anthropic Post",
+      "slug": "hardmode-winner-feature-in-claude",
+      "links": [
+       {
+        "text": "Hardmode Winner",
+        "url": "https://hardmode.media.mit.edu/"
+       },
+       {
+        "text": "Anthropic Post",
+        "url": "https://www.instagram.com/p/DV_fkY-FGOn/?img_index=4"
+       }
+      ]
+     },
+     {
+      "id": "a2",
+      "label": "President Innovation Challenge Semifinalist",
+      "slug": "photography",
+      "links": [
+       {
+        "text": "President Innovation Challenge Semifinalist",
+        "url": "https://innovationlabs.harvard.edu/presidents-innovation-challenge"
+       }
+      ]
+     },
+     {
+      "id": "a3",
+      "label": "MIT sandbox Spring cohort",
+      "slug": "mit-sandbox-spring-cohort",
+      "links": [
+       {
+        "text": "MIT sandbox Spring cohort",
+        "url": "https://sandbox.mit.edu/"
+       }
+      ]
+     },
+     {
+      "id": "mn8mts",
+      "label": "Hult Prize National Finalist",
+      "slug": "item-mn8mts",
+      "links": [
+       {
+        "text": "Hult Prize National Finalist",
+        "url": "https://www.hultprizenationals.com/"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "projects": {
+  "graphite-build-taste-with-ai": {
+   "tag": "project",
+   "title": "Graphite Build Taste With AI",
+   "font": "'Afacad', sans-serif",
+   "summary": "<div>Translate your taste profiles into skills embedded in any AI sessions</div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">· Design · Software Engineering&nbsp;</span></div>",
+   "coverSrc": "",
+   "heroBlocks": [],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "\"AI slop\" is produced everyday from prompts. Taste is not easy to be expressed linguistically, it comes with an accumulated collections from various sources. Hence Graphite's built -- an AI native taste collector that helps to translate your personal preferences into taste profiles other AI tools can understand. So you create unique work instead of average slop.<div><br></div>",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "The Canvas",
+     "body": "Graphite is used as a sketch of your artwork, its rough but with the highest inspiration. Start with an idea and your canvas will have multi-media content populated around your inspiration.&nbsp;",
+     "blocks": [
+      {
+       "id": "1786908365522",
+       "type": "image",
+       "src": "/media/mswde3ae-0ngaywiw.png",
+       "caption": "Begin your canvas journey"
+      },
+      {
+       "id": "moved-1786926960371-tvxjz",
+       "type": "video",
+       "src": "/graphite-clip-1-brief.mp4",
+       "caption": "Input inspirations and begin curation"
+      }
+     ]
+    },
+    {
+     "id": "engineer-decision",
+     "title": "The user experience",
+     "body": "Preview any content and drag into Keep or Release, the algorithm will understand your preference and continuously share inspirational content without being overwhelming. Graphite will learn your taste profile and create a skill that embed taste into any AI sessions.&nbsp;",
+     "blocks": [
+      {
+       "id": "moved-1786925882915-jtlen",
+       "type": "video",
+       "src": "/graphite-clip-2-curate.mp4",
+       "caption": "content relevant to you will populate automatically"
+      },
+      {
+       "id": "seed-engineer-decision-1",
+       "type": "video",
+       "src": "/graphite-clip-4-detail.mp4",
+       "caption": "Preview detailed content "
+      },
+      {
+       "id": "moved-1786925820962-8qzlv",
+       "type": "video",
+       "src": "/graphite-clip-5-reveal.mp4",
+       "caption": "The generated design playbook, export as a skill to any AI tool to keep building "
+      }
+     ]
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "The features",
+     "body": "Features are designed to keep you inspired and creative, as your taste changes the interface UI will change accordingly! Skill playbook curates your skill.md for any AI sessions, Profile shows your visual identity and Command gives you control on the type of media you want...",
+     "blocks": [
+      {
+       "id": "1786920195213",
+       "type": "image",
+       "src": "/media/mswe5ax8-7om1o3ax.webp",
+       "caption": "Skill playbook "
+      },
+      {
+       "id": "1786920200375",
+       "type": "image",
+       "src": "/media/mswe5ewn-pvj81xdw.webp",
+       "caption": "Profile"
+      },
+      {
+       "id": "1786920154593",
+       "type": "image",
+       "src": "/media/mswe4fkw-2ko28iua.webp",
+       "caption": "Command "
+      }
+     ]
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "I believe creativity is randomized it requires a by chance development of taste to create something create. So dont just build, build something great...<div><br></div><div>The limitation of this product is its integration with other in the market AI tools, with full integration Graphite should become the AI era of Pinterest where inspirations are translated into creative with ease.</div>",
+     "blocks": []
+    }
+   ],
+   "dismissedSeeds": [
+    "seed-engineer-decision-0",
+    "seed-prototype-outcome-0",
+    "seed-design-decision-0",
+    "seed-problem-defining-0"
+   ]
+  },
+  "mindmax-ai-co-thinker": {
+   "tag": "project",
+   "title": "Mindmax Ai Co Thinker",
+   "font": "'Afacad', sans-serif",
+   "summary": "Exploring... How do we translate thought into texts",
+   "coverSrc": "",
+   "heroBlocks": [],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Prototype Outcome",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "",
+     "blocks": []
+    }
+   ]
+  },
+  "ai-commercial-product": {
+   "tag": "project",
+   "title": "AI Commercial Product",
+   "font": "'Afacad', sans-serif",
+   "summary": "Commercial features shipped @Tiktok Search<div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">· Business Strategy · Engineering&nbsp;</span><br><div><span style=\"color: rgb(153, 153, 153);\"><span style=\"font-size: 13px;\"><span style=\"font-style: italic;\">Visuals are confidential, hence describing my work through text</span></span></span></div></div>",
+   "columns": [
+    {
+     "name": "Agentic Lead",
+     "blocks": [
+      {
+       "id": "0k322w",
+       "kind": "text",
+       "html": "<div><span style=\"color: rgb(153, 153, 153);\"><span style=\"font-size: 12px;\">[ AI assisted agent translating demand to result directly ]</span></span></div><div><span style=\"color: rgb(153, 153, 153);\"><span style=\"font-size: 12px;\">· pre-launch product design&nbsp;</span></span></div><div><br></div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\">Goal:</span></span>&nbsp;<div><span style=\"font-size: 12px;\">increase lead quantity and quality by integrating AI chatbot in users experience<div></div></span><div><br></div><div><div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\">The Design:</span></span></div><span style=\"font-size: 12px;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">AI Chatbot Integration&nbsp;</span></span></div><div><span style=\"font-size: 12px;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"font-style: italic;\">Before:</span>&nbsp;</span></span><span style=\"font-size: 12px;\">Users interested in an ad (ie. car viewing) they have to click into ad and leave a message for the shop owner to reply, the lead devalues as time passes. Leading to low conversion rate.&nbsp;</span></div></div><div><span style=\"font-size: 12px;\"><br></span></div><div><span style=\"font-size: 12px;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"font-style: italic;\">After:</span></span> An Ai assistant appears in search summary and users can chat with an assistant about the ad. Get 247 service and your appointment for car view will be booked directly without human intervention. Saves time for shop owners and increase conversion result.&nbsp;</span></div><div><span style=\"font-size: 12px;\"><br></span></div><div><span style=\"font-style: italic; text-decoration: underline;\">Design Decision:</span></div><div><span style=\"font-size: 12px;\">User workflow: entry points for users to be assisted are determined by A/B testings on user interactions to existing icons, maximizing entry point engagement</span></div><div><span style=\"font-size: 12px;\"><br></span></div><div><span style=\"font-size: 12px;\">(Embed AB table)</span></div><div><br></div><div><span style=\"font-style: italic; text-decoration: underline;\">Engineering Decision:</span></div><div><span style=\"font-size: 12px;\">Personalized conversation: training model to understand users adaptive intent and personalize conversation trajectory to reach final conversion result&nbsp;</span></div>"
+      }
+     ]
+    },
+    {
+     "name": "Smartlead",
+     "blocks": [
+      {
+       "id": "restore-1786907274953",
+       "kind": "text",
+       "html": "<div></div><span style=\"font-size: 12px;\"><div><div style=\"font-size: 14px;\"><span style=\"color: rgb(153, 153, 153);\"><span style=\"font-size: 12px;\">[ AI distribute personalized ad content to target users ]&nbsp;</span></span></div><div style=\"font-size: 14px;\"><span style=\"color: rgb(153, 153, 153);\"><span style=\"font-size: 12px;\">· launched, completed design and engineering</span></span></div></div><div></div></span><div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\"><br></span></span></div><div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\">Goal:</span></span>&nbsp;</div><div></div><span style=\"font-size: 12px;\"><div>increase lead conversion rate by personalizing user experience</div><div></div></span><div><br></div><div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\">The Design:</span></span></div><span style=\"font-size: 12px;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><div>Location Auto Selection Feature</div><div></div></span><div><span style=\"font-style: italic;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">Before:</span></span> one ad group was bound to a single destination (Website, 1P Form, or DM). Advertisers had to judge for themselves which path performed better, and in practice a given advertiser usually only ever used one.</div></span><div></div><div><br></div><div></div><span style=\"font-size: 12px;\"><div><span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"font-style: italic;\">After:</span> </span>Under the Leads goal, Optimization Location supports multi-select by default; the delivery system automatically picks the best path/component based on user preference.</div><div><br></div><div><span style=\"font-style: italic;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">Results:</span></span> advv +24%, daily revenue increased from $4k to $39k</div></span><div></div><div><br></div><div><span style=\"font-style: italic;\"><span style=\"text-decoration: underline;\">Search Design:</span></span></div><div><span style=\"font-size: 12px;\"><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">a) Query to user intent - creatives</span></span></div><div></div><span style=\"font-size: 12px;\"><div>Use query embeddings to understand user intent and serve ads across a more diverse set of ad locations.</div><div><span style=\"font-style: italic;\"><br></span></div><div><span style=\"font-style: italic;\">[Example:</span> 28 y/o · female · New York · interest tags include \"wedding dress, wedding ring\" searches \"wedding photography New York pricing\"]</div><div>The model receives (user, query=\"wedding photography New York pricing\", ad)</div><div><ul dir=\"ltr\"><li><strong>Query intent classification:</strong> local-commercial + pricing/decision stage (high purchase intent)</li><li><strong>(user × query) crossover:</strong> interest signals and action signals overlap</li><li><strong>(query × ad) relevance:</strong> strong content relevance to a specific New York wedding photography studio's ad</li></ul><p dir=\"ltr\"></p></div><div><br></div><div><span style=\"color: rgb(17, 17, 17); font-weight: 700;\">b) Query to keyword relevancy - model foundation</span></div></span><div></div><div><strong></strong><strong></strong><span style=\"font-size: 12px;\"><strong></strong><strong>Search delivery path:</strong> the delivery path infers user intent through the query, and weights relevance heavily. Need to improve model performance for an accurate search ecpm scoring.<ul dir=\"ltr\"><li><strong>Search eCPM formula:</strong> <code data-epitaxy-inline-code=\"\">Rank Score = ECPM + HiddenCost (Relevance + UserIntentMismatch)</code></li><li><strong>Feed eCPM formula:</strong> <code data-epitaxy-inline-code=\"\">Rank Score ~ ECPM (bid × pCTR × pCVR × 1000)</code></li></ul></span><ul dir=\"ltr\"><li><code data-epitaxy-inline-code=\"\"></code></li></ul><ul dir=\"ltr\"><li><code data-epitaxy-inline-code=\"\"></code></li></ul></div><div style=\"color: rgb(153,153,153); font-size: 12px;\"><br></div>"
+      }
+     ]
+    }
+   ],
+   "restoredSmartlead": true
+  },
+  "drift-rl-on-routing-system": {
+   "tag": "project",
+   "title": "Drift ",
+   "font": "'Afacad', sans-serif",
+   "summary": "A ML trained routing algorithm that helps runners to explore new routes around the city<div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">· Design · Engineering&nbsp;</span></div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">Completed as a group of 3, my main role was designing the wearable and software integration</span></div></div>",
+   "coverSrc": "",
+   "heroBlocks": [
+    {
+     "id": "seed-drift-hero-demo-0",
+     "type": "video",
+     "src": "/drift-hero-demo.mp4",
+     "caption": "Drift — concept "
+    }
+   ],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "Today's routing systems are destination-based -- ie. Google Maps, takes a location and calculates the most efficient route to get there. However the rigid way of commuting is not by our nature. I believe we need an exploratory routing algorithm that can personalize our ways around the city.",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Prototype outcome",
+     "body": "Building a wearable that output haptic signals to direct you, opening up your senses to fully immerse in the surrounding environments.",
+     "blocks": [
+      {
+       "id": "1786929927692",
+       "type": "image",
+       "src": "/media/mswjxwjw-fg4xogdj.webp",
+       "caption": "Product Hero image"
+      },
+      {
+       "id": "1786929956901",
+       "type": "image",
+       "src": "/media/mswjyj38-yhtjqv6r.webp",
+       "caption": "Paired with software that can personalize your routes interactively"
+      }
+     ]
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineering Decision",
+     "body": "The model is trained on GeoJSON parameters that matter to runners (ie. city landscape, canopy shade, park locations, and similar features.) The costing formula weighs the user's personal interests as top priority, generating routes accordingly. As a result, everyone's route looks different.",
+     "blocks": [
+      {
+       "id": "1786930190332",
+       "type": "image",
+       "src": "/media/mswk3j7g-4jhih5ar.webp",
+       "caption": "Data layers"
+      },
+      {
+       "id": "1786930317999",
+       "type": "video",
+       "src": "/media/mswk69pd-kgfs2uoe.mov",
+       "caption": "Route simulation and costing formula"
+      },
+      {
+       "id": "1786930186022",
+       "type": "image",
+       "src": "/media/mswk3fvq-0mhjadrf.webp",
+       "caption": "Software architecture"
+      }
+     ]
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Design Decision",
+     "body": "Drift is designed without a screen, an electrical device embedded into fabric worn on the wrist. The goal is to minimize size and weight while preserving functionality, designing a form that lets the user clearly sense actuation, and choosing materials that endure sweat while maximizing comfort.",
+     "blocks": [
+      {
+       "id": "1786930397151",
+       "type": "image",
+       "src": "/media/mswk7ysf-38n2lkok.webp",
+       "caption": "Product in axo "
+      },
+      {
+       "id": "1786930375959",
+       "type": "image",
+       "src": "/media/mswk7ifr-7m0uu2r6.webp",
+       "caption": "Concept and Shape iterations"
+      },
+      {
+       "id": "1786930380036",
+       "type": "image",
+       "src": "/media/mswk7lkz-m02p6tke.webp",
+       "caption": "Electrical design"
+      },
+      {
+       "id": "1786930383585",
+       "type": "image",
+       "src": "/media/mswk7obl-ppg32q43.webp",
+       "caption": "Material choice"
+      }
+     ]
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "The core aim of Drift was to explore simulating possibilities from a noisy dataset. One limitation: with a small test-user pool, the routing system didn't reach statistically significant precision. Going forward, I intend to dig deeper into integrating ML/RL into simulation training for predictions in other contexts.",
+     "blocks": []
+    }
+   ],
+   "dismissedSeeds": []
+  },
+  "narrowing-mirror": {
+   "tag": "project",
+   "title": "Narrowing Mirror",
+   "font": "'Afacad', sans-serif",
+   "coverSrc": "",
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Prototype Outcome",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "",
+     "blocks": []
+    }
+   ]
+  },
+  "art": {
+   "tag": "project",
+   "title": "Art",
+   "font": "'Afacad', sans-serif",
+   "summary": "Pending -- I paint and draw to think...",
+   "coverSrc": "",
+   "heroBlocks": [],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Prototype Outcome",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "",
+     "blocks": []
+    }
+   ]
+  },
+  "agentic-lead": {
+   "tag": "project",
+   "title": "AI Commercial Products",
+   "font": "'Afacad', sans-serif",
+   "coverSrc": "",
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Prototype Outcome",
+     "body": "",
+     "blocks": []
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "",
+     "blocks": []
+    }
+   ]
+  },
+  "sixth-embodied-intelligence": {
+   "tag": "project",
+   "title": "Sixth Embodied Intelligence",
+   "font": "'Afacad', sans-serif",
+   "summary": "<div>AI on body -- intelligent wearable collect bio-sensing data and give real-time respond</div><div><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">Paper publishing @UbiComp</span></div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">· Design · Engineering&nbsp;</span></div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">Completed as a group of 4, my main role was designing the wearable and software integration</span></div>",
+   "coverSrc": "",
+   "heroBlocks": [
+    {
+     "id": "seed-sixth-hero-film-0",
+     "type": "video",
+     "src": "/sixth-film.mp4",
+     "caption": "SIXTH — concept film",
+     "poster": "/sixth-film-poster.jpg"
+    }
+   ],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "LLMs are integrated into our daily lives, but its constrained to our current hardware. What if AI can understand your body and tell you in real time what to do? SIXTH is an attempt to build the thinnest LLM hardware that can reason based on your bio data.&nbsp;",
+     "blocks": []
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "SIXTH is engineered to conform to the human body while minimizing weight and discomfort. It's designed to feel like a second skin worn over your base layer rather than a separate garment. A layer of conductive fabric tracks vital signs directly at the body, connected by conductive wiring so lightweight it disappears entirely.",
+     "blocks": [
+      {
+       "id": "1786921174290",
+       "type": "image",
+       "src": "/media/msweqadu-9ikbcjo5.webp",
+       "caption": "Hero Image"
+      },
+      {
+       "id": "1786921136244",
+       "type": "image",
+       "src": "/media/msweph0z-1a1agdf9.webp",
+       "caption": "Layered design - using marino wool to ensure comfort and avoid sweat"
+      },
+      {
+       "id": "1786921220921",
+       "type": "image",
+       "src": "/media/mswerad5-n9muo0tf.webp",
+       "caption": "Wearable design - integrate fashion elements into the clothing"
+      }
+     ]
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": [
+      {
+       "id": "1786921206449",
+       "type": "image",
+       "src": "/media/msweqz75-3jb3mwe8.webp",
+       "caption": "Electrical mapping"
+      },
+      {
+       "id": "1786921147557",
+       "type": "image",
+       "src": "/media/msweppr8-zysruzei.webp",
+       "caption": "Material Experimentation"
+      }
+     ]
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Software and Process",
+     "body": "The software is designed to accommodate two modes:<div><strong>Daily mode</strong> connects to the cloud, delivering feedback through a digital device.&nbsp;</div><div><strong>Extreme mode</strong> relies on locally stored heuristics to make decisions on-device, triggering output signals (like heating or actuation) for immediate feedback.</div><div><br></div>",
+     "blocks": [
+      {
+       "id": "1786926202513",
+       "type": "image",
+       "src": "/media/mswhq26o-799257aa.webp",
+       "caption": "Mode architecture design"
+      },
+      {
+       "id": "1786926195448",
+       "type": "image",
+       "src": "/media/mswhpwqg-wyij73z5.webp",
+       "caption": "Daily mode user experience"
+      },
+      {
+       "id": "1786926214998",
+       "type": "image",
+       "src": "/media/mswhqbti-hg1ufetx.webp",
+       "caption": "Extreme mode user experience"
+      },
+      {
+       "id": "1786926241516",
+       "type": "image",
+       "src": "/media/mswhqwa3-seampqpa.webp",
+       "caption": "Sensing positioning - avoiding under garment to collect accurate data"
+      },
+      {
+       "id": "1786926251226",
+       "type": "image",
+       "src": "/media/mswhr3ru-xq5yvqa6.webp",
+       "caption": "Output positioning - heating layer"
+      },
+      {
+       "id": "1786926264629",
+       "type": "image",
+       "src": "/media/mswhre45-q0pilm74.webp",
+       "caption": "Output positioning - actuation layer"
+      }
+     ]
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "SIXTH reflects my interest in embodied intelligence, I believe AI won't just live on our phones or laptops, but will extend our understanding of our own bodies.<div><br></div><div>However this research is high cost to productize therefore would love to extend my knowledge on manufacturing and brand collaborations to realize research into market.&nbsp;</div>",
+     "blocks": []
+    }
+   ],
+   "dismissedSeeds": []
+  },
+  "graphite": {
+   "tag": "project",
+   "title": "Graphite",
+   "font": "'Afacad', sans-serif",
+   "coverSrc": "",
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "AI slop is contaminating our native instinct as creative beings. Generalized design appear based on rules not 'taste'. How do we capture each individual's uniqueness and help to develop their own taste? GRAPHITE is the answer - its an AI native taste builder which allows your exploration to be painless and transfer the taste you have built throughout time to whichever projects you are working on in AI.&nbsp;",
+     "blocks": [
+      {
+       "id": "seed-problem-defining-0",
+       "type": "video",
+       "src": "/graphite-clip-1-brief.mp4",
+       "caption": "Setting the creative brief"
+      }
+     ]
+    },
+    {
+     "id": "design-decision",
+     "title": "Design Decision",
+     "body": "",
+     "blocks": [
+      {
+       "id": "seed-design-decision-0",
+       "type": "video",
+       "src": "/graphite-clip-2-curate.mp4",
+       "caption": "AI curates matching references"
+      }
+     ]
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Engineer Decision",
+     "body": "",
+     "blocks": [
+      {
+       "id": "seed-engineer-decision-0",
+       "type": "video",
+       "src": "/graphite-clip-3-arrange.mp4",
+       "caption": "Arranging the moodboard canvas"
+      },
+      {
+       "id": "seed-engineer-decision-1",
+       "type": "video",
+       "src": "/graphite-clip-4-detail.mp4",
+       "caption": "Opening a reference for detail"
+      }
+     ]
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Prototype Outcome",
+     "body": "",
+     "blocks": [
+      {
+       "id": "seed-prototype-outcome-0",
+       "type": "video",
+       "src": "/graphite-clip-5-reveal.mp4",
+       "caption": "The generated design playbook"
+      }
+     ]
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "",
+     "blocks": []
+    }
+   ],
+   "seededDemo": true
+  },
+  "peri-ai-agentic-creator-tool": {
+   "tag": "project",
+   "title": "Peri Ai Agentic Creator Tool",
+   "font": "'Afacad', sans-serif",
+   "summary": "<div>Agentic negotiator that are in charge of all your deals</div><div><span style=\"color: rgb(153, 153, 153); font-size: 13px;\">· Business · Software Engineering&nbsp;</span></div>",
+   "coverSrc": "",
+   "heroBlocks": [
+    {
+     "id": "seed-peri-hero-demo-0",
+     "type": "video",
+     "src": "/peri-mvp-demo.mp4",
+     "caption": "The challenge: build an negotiator that can bring better deals than human"
+    }
+   ],
+   "sections": [
+    {
+     "id": "problem-defining",
+     "title": "Problem Defining",
+     "body": "Creators are being changed &gt;30% from their deals from creative agencies who aren't bringing values, LLMs are not capable of understanding the negotiation context and bring the best value out of your deals",
+     "blocks": [
+      {
+       "id": "1786926636086",
+       "type": "image",
+       "src": "/media/mswhzcqc-22mywilm.png",
+       "caption": ""
+      }
+     ]
+    },
+    {
+     "id": "design-decision",
+     "title": "market & Solution",
+     "body": "We charge 10% commission with AI agent providing scalable and personalized end to end service for creators - from sourcing deals to strategic negotiating to the final contracting.",
+     "blocks": [
+      {
+       "id": "1786926669440",
+       "type": "image",
+       "src": "/media/mswi02gv-9bt24fyq.webp",
+       "caption": "The features"
+      },
+      {
+       "id": "1786926779287",
+       "type": "image",
+       "src": "/media/mswi2f80-d42kaery.png",
+       "caption": "The market understanding"
+      }
+     ]
+    },
+    {
+     "id": "engineer-decision",
+     "title": "Result",
+     "body": "Achieved users on both creator (eventually 50+ users) and brand side (2 finalized deals)",
+     "blocks": [
+      {
+       "id": "1786926710824",
+       "type": "image",
+       "src": "/media/mswi0ye6-7h51govf.png",
+       "caption": "Creator pilot growth"
+      },
+      {
+       "id": "1786926715019",
+       "type": "image",
+       "src": "/media/mswi11my-44mepwc8.png",
+       "caption": "Creators onboarded"
+      },
+      {
+       "id": "1786926723005",
+       "type": "image",
+       "src": "/media/mswi17st-m1r2n5ta.png",
+       "caption": "Brands onboarded"
+      }
+     ]
+    },
+    {
+     "id": "prototype-outcome",
+     "title": "Engineer decision",
+     "body": "<div>The key design decision stays in the negotiation layer, to replace the intuition in many human agents</div><div><br></div>1. Negotiation Policy - designed in tiers for human intervention<div><p dir=\"ltr\"><strong><span style=\"font-size: 12px;\">Tiers</span></strong></p><ul dir=\"ltr\"><li><em><span style=\"font-weight: bolder; font-style: normal;\"></span></em></li><span style=\"font-size: 12px;\"><li><em><span style=\"font-weight: bolder; font-style: normal;\">Auto-handle</span>:</em> inside pre-authorization boundary -- allowed category, deliverable terms, standard terms.</li><li><em><span style=\"font-weight: bolder; font-style: normal;\">Escalation</span>:</em> touches an irreversible term (price commit, exclusivity, usage rights) or the extraction confidence is low.</li></span><li></li><li><br></li></ul><div>2. Negotiation Simulation</div><div><p dir=\"ltr\"><strong></strong></p><span style=\"font-size: 12px;\"><p dir=\"ltr\"><strong>On selecting the move:&nbsp;</strong>Simulate each candidate N times against the sampled persona and play out several rounds ahead to predict counter offer.</p><p dir=\"ltr\"><strong>On selecting the language:&nbsp;</strong>Lead with brand's goal. Figure out what the brand actually cares about, then pitch the same deal in those terms.</p></span><ul dir=\"ltr\"><li></li><li><br></li></ul></div><div>3. Failure Backup</div></div><div><p dir=\"ltr\"><strong></strong></p><span style=\"font-size: 12px;\"><p dir=\"ltr\"><strong>Action Validation:</strong> The system's degraded state is raise to human decision, never a wrong outbound action. Guardrail to protect against a hallucinated commitment to a brand</p><ul dir=\"ltr\"><li><strong>Language Validation:</strong>&nbsp;deterministic validator on every outbound message -- floor, banned category, commitment language, PII.&nbsp;</li></ul></span><ul dir=\"ltr\"><li></li></ul></div>",
+     "blocks": []
+    },
+    {
+     "id": "reflection",
+     "title": "Reflection",
+     "body": "Peri was built and front-deployed with customer in 3weeks, it was my first try on building a to B product and roll out GTM plan facing enterprises. I learnt in depth what D2C brands care about and how to scale a product from 0-1.",
+     "blocks": []
+    }
+   ],
+   "dismissedSeeds": [
+    "seed-reflection-0",
+    "seed-prototype-outcome-0",
+    "seed-engineer-decision-1",
+    "seed-engineer-decision-0",
+    "seed-design-decision-1",
+    "seed-design-decision-0",
+    "seed-problem-defining-0",
+    "seed-inquiries-page-0",
+    "seed-agent-conversation-0",
+    "seed-approve-reject-0"
+   ]
+  }
+ },
+ "articles": {
+  "item-p7jkh6": {
+   "title": "Building a LLM",
+   "body": "process of how its built and some personal thoughts",
+   "readings": []
+  },
+  "energy-consumption-for-data-centers": {
+   "title": "Robotics like Lego",
+   "body": "Is there a way to make robotics more accessible? make consumers all have the power to build and express physical creativity with a framework",
+   "readings": []
+  },
+  "creative-paradigm-in-ai-era": {
+   "title": "How do we Design",
+   "body": "<div>The way we interact with softwares have become omni, we converge to chatboxes and somehow just stay within the code interface. But is this the ultimate interface? Chatbox and Browser? I actually think instead of UI changing continuously, what if the software interaction itself is fully customized?&nbsp;</div><div><br></div>Ive been thinking about how the design process actually works and if there's a way to condense a protocol for my creative thought process.<div><br></div><div>I used to find a location, a context, an existing meaning, hold onto it. Break a big idea into elements and each element finding references of what other people have done and if i can combine those things to become a whole. What my tutor does is also to provide me visuals of other pioneers work and evoke my thought. You would draw and prototype from mimicking to creating, eventually turning the ambiguity into a final work. However this intuitive process is abit lost in the current tooling world, where we separate the inspiration from the work.</div><div><br></div><div>Take an example, if we want visual references we would goto cosmos, are.na, pinterest, query our thought for pure visual references. We have to translate our work or idea into texts and query to retrieve similar idea/visual from artist or work. but what if theres a way to keep memory of your current work and just give you reference to evoke your thought and ideas throughout the entire journey so it understands context not just what you can express.&nbsp;</div><div><br></div><div>can we bring the intuition we have in design into software, in the way we collaborate and build something new.&nbsp;</div><div><br></div><div>the way i communicate with tutors about my ideas is through presentation and talking and they will give feedback, what if this is real time, anytime with AI in context and memory of my work. they can see and understand what im doing and expand my scope beyond current knowledge.&nbsp;</div><div><br></div><div>software should not have the limitation of taps and layers of files, and the user's constrained within each tab theyr in to execute a workflow. it should be as intuitive as drawing on a limitless paper with full capacities of all tools at ur hand. Like a painter at the canvas. Or as easy as one talking a long walk with a stream of thoughts.&nbsp;</div><div><br></div><div>There is alot of waiting in today's creation. Waiting for generation to happy and not having a streamline of workflow. so how we follow a more streamlined workflow to feel like wer in the creative zone? instead of being interrupted by things stopping and rehappening?</div><div><br></div><div>a few things to conclude from today's experience making a 10s simple video:</div><div><br></div><div>1. too many tools and models, hard to decide, even with pre-knowledge</div><div>2. the idea stage was hard to gather all the inspirations as theyr from so many different websites&nbsp;</div><div>2. stuck at alot of buggy parts of the tool keep searching for answers (ie. use recast for having the exact motion) llm has no context so i have to intentionally ask after a few failed trails&nbsp;</div><div>3. llm doesnt have the full context and keep giving me guidance that doesnt solve the exact problem</div><div>4. theres alot of wait time, takes along time to generate, waiting around does keep me creative</div><div>5. opened a bunch of tabs, genuiinely believe in the future<span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"text-decoration: underline;\"> softwares are customized not jumping between a bunch of interfaces</span></span></div><div><br></div><div>still not sure about the business model, i think i know the rough crowd im serving and their issues</div>",
+   "readings": []
+  },
+  "fleet-simulation": {
+   "title": "Fleet Simulation",
+   "body": "pending...<div><br></div><div>I want to understand how to simulate EV car movements in the city with RL, to understand how to reduce energy consumption</div>",
+   "readings": []
+  },
+  "telepathy-encode-and-decode": {
+   "title": "Telepathy Encode And Decode",
+   "body": "<div><span style=\"font-size: 13px;\">Our current way of communicating our intent is through query -- typing in words that translate our thought into an ask. The same in content-based product, or tool-based product like AI chatbot. Then we realized that people do not normally express themselves accurately, therefore we developed user behaviour understanding, to depict user's true intent based on the scaled user behaviour (ie. clicks, view, engagement time etc). But I believe this is only translating&nbsp; algorithmic pattern onto individuals, not really understanding the user's intention. For example in social media, at this time of the day I just want to watch knowledge based push but some time I just want to watch entertainment stuff. This intention cannot be captured immediately, resulting in me dropping from the social media page as my need was not fulfilled. I am not suggesting to get rid of query completely because its still the strongest intent, but above the user behaviour layer, is there another way for us to translate out thought into content that continuously evolve.</span></div><span style=\"font-size: 13px;\"><div><span style=\"font-size: 13px;\"><br></span></div>I've been working on query understanding, this made me start to think about the future interface of interactions. For decades, we have been translating our intent to writing and let computers understand our thought linguistically, but is there a way to combine brain signals to predict pre-linguistic intention before we know it?<div><div><br></div><div>1. Collection&nbsp;</div><div>2. Labelling</div><div>3. Architecture</div><div>4. Output</div><div>5. Testing</div></div><div><br></div><div>Conclusion:</div><div>I believe there should be a protocol that allows all type of brain signals to be involved and therefore creating the largest dataset without doing singular experiments</div></span><div></div>",
+   "readings": []
+  },
+  "item-m8v3mg": {
+   "title": "How to build a social media that can be controlled",
+   "body": "",
+   "readings": []
+  }
+ }
+}

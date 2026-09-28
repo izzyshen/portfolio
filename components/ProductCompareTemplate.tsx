@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
 import { useEditMode } from "@/lib/editMode"
+import { seedProject } from "@/lib/seed"
 import {
   useMediaSrc,
   storeImageFile,
@@ -664,9 +665,9 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
     const load = () => {
       try {
         const raw = localStorage.getItem(storageKey)
-        setContent(normalize(raw ? JSON.parse(raw) : null, slug))
+        setContent(normalize(raw ? JSON.parse(raw) : seedProject(slug), slug))
       } catch {
-        setContent(defaultContent(slug))
+        setContent(normalize(seedProject(slug), slug))
       }
     }
     load()

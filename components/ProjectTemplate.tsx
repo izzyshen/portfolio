@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
 import { useEditMode } from "@/lib/editMode"
+import { seedProject } from "@/lib/seed"
 import {
   useMediaSrc,
   storeImageFile,
@@ -1253,9 +1254,9 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
           const legacySlug = legacySlugFor(slug)
           if (legacySlug) raw = localStorage.getItem(`portfolio-project-${legacySlug}`)
         }
-        setContent(normalize(raw ? JSON.parse(raw) : null, slug))
+        setContent(normalize(raw ? JSON.parse(raw) : seedProject(slug), slug))
       } catch {
-        setContent(defaultContent(slug))
+        setContent(normalize(seedProject(slug), slug))
       }
     }
     load()

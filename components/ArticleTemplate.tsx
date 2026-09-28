@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useEditMode } from "@/lib/editMode"
+import { seedArticle } from "@/lib/seed"
 
 interface ReadingItem {
   id: string
@@ -492,9 +493,9 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     const load = () => {
       try {
         const raw = localStorage.getItem(storageKey)
-        setContent(normalize(raw ? JSON.parse(raw) : null, slug))
+        setContent(normalize(raw ? JSON.parse(raw) : seedArticle(slug), slug))
       } catch {
-        setContent(defaultContent(slug))
+        setContent(normalize(seedArticle(slug), slug))
       }
     }
     load()
