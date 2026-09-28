@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useEditMode } from "@/lib/editMode"
 
 interface ReadingItem {
   id: string
@@ -45,16 +46,17 @@ function EditLine({
   initial, style, onSave,
 }: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
     <div
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: "text", whiteSpace: "pre-wrap", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", whiteSpace: "pre-wrap", ...style }}
     />
   )
 }
@@ -343,19 +345,20 @@ function EditBody({
   initial, style, onSave,
 }: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   const empty = useRef(!initial)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    ref.current.innerHTML = initial || PLACEHOLDER
+    ref.current.innerHTML = initial || (editable ? PLACEHOLDER : "")
   }, [])
 
   return (
     <>
       <div
         ref={ref}
-        contentEditable
+        contentEditable={editable}
         suppressContentEditableWarning
         onFocus={() => {
           if (empty.current && ref.current?.querySelector("[data-ph]")) {
@@ -369,9 +372,9 @@ function EditBody({
           if (!html) e.currentTarget.innerHTML = PLACEHOLDER
           onSave(html === PLACEHOLDER ? "" : html)
         }}
-        style={{ outline: "none", cursor: "text", ...style }}
+        style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
       />
-      <FormatToolbar containerRef={ref} />
+      {editable && <FormatToolbar containerRef={ref} />}
     </>
   )
 }
@@ -380,6 +383,7 @@ function EditBody({
 function ReadingRow({
   item, onDelete, onSave,
 }: { item: ReadingItem; onDelete: () => void; onSave: (title: string) => void }) {
+  const editable = useEditMode()
   const [hov, setHov] = useState(false)
   return (
     <div
@@ -404,6 +408,7 @@ function ReadingRow({
       <span style={{ fontSize: 11, color: "#c2c0ba", flexShrink: 0, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {item.url.replace(/^https?:\/\//, "")}
       </span>
+      {editable && (
       <button
         onClick={onDelete}
         title="delete"
@@ -415,6 +420,7 @@ function ReadingRow({
       >
         ×
       </button>
+      )}
     </div>
   )
 }
@@ -466,6 +472,7 @@ function AddReadingRow({ onAdd }: { onAdd: (title: string, url: string) => void 
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function ArticleTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-article-${slug}`
+  const editable = useEditMode()
   const [content, setContent] = useState<ArticleContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [undoneMsg, setUndoneMsg] = useState(false)
@@ -541,6 +548,7 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
   }
 
   useEffect(() => {
+    if (!editable) return
     const onKeyDown = (e: KeyboardEvent) => {
       const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
       if (!isUndo) return
@@ -559,7 +567,8 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editable])
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
@@ -604,9 +613,11 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
             />
           ))}
 
+          {editable && (
           <AddReadingRow
             onAdd={(title, url) => patch({ readings: [...content.readings, { id: uid(), title, url }] })}
           />
+          )}
         </div>
       </div>
 

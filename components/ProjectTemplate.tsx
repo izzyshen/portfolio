@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
+import { useEditMode } from "@/lib/editMode"
 import {
   useMediaSrc,
   storeImageFile,
@@ -315,16 +316,17 @@ function EditLine({
   initial, style, onSave,
 }: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
     <div
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: "text", whiteSpace: "pre-wrap", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", whiteSpace: "pre-wrap", ...style }}
     />
   )
 }
@@ -652,20 +654,21 @@ function EditBody({
   placeholder?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   const empty = useRef(!initial)
   const ph = placeholder ? placeholderHtml(placeholder) : PLACEHOLDER
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    ref.current.innerHTML = initial || ph
+    ref.current.innerHTML = initial || (editable ? ph : "")
   }, [])
 
   return (
     <>
       <div
         ref={ref}
-        contentEditable
+        contentEditable={editable}
         suppressContentEditableWarning
         onFocus={() => {
           if (empty.current && ref.current?.querySelector("[data-ph]")) {
@@ -679,21 +682,23 @@ function EditBody({
           if (!html) e.currentTarget.innerHTML = ph
           onSave(html === ph ? "" : html)
         }}
-        style={{ outline: "none", cursor: "text", ...style }}
+        style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
       />
-      <FormatToolbar containerRef={ref} />
+      {editable && <FormatToolbar containerRef={ref} />}
     </>
   )
 }
 
 // ── cover image ───────────────────────────────────────────────────────────────
 function CoverZone({ src, onChange }: { src: string; onChange: (s: string) => void }) {
+  const editable = useEditMode()
   const inputRef = useRef<HTMLInputElement>(null)
   const displaySrc = useMediaSrc(src)
   const readFile = (f: File) => { storeImageFile(f).then(onChange) }
+  if (!editable && !src) return null
   return (
     <div
-      onClick={() => !src && inputRef.current?.click()}
+      onClick={() => editable && !src && inputRef.current?.click()}
       style={{
         marginBottom: 48,
         position: "relative",
@@ -710,7 +715,7 @@ function CoverZone({ src, onChange }: { src: string; onChange: (s: string) => vo
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={displaySrc} alt="" style={{ width: "100%", display: "block" }} />
-          <button onClick={() => onChange("")} style={overlayBtn}>✕ remove</button>
+          {editable && <button onClick={() => onChange("")} style={overlayBtn}>✕ remove</button>}
         </>
       ) : (
         <span style={{ color: "#c2c2c2", fontSize: 9, letterSpacing: "0.2em" }}>+ COVER IMAGE</span>
@@ -823,6 +828,7 @@ function BlockView({
   isDragging: boolean
   isDropTarget: boolean
 }) {
+  const editable = useEditMode()
   const imageSrc = useMediaSrc(block.type === "image" ? block.src : "")
   return (
     <div
@@ -836,6 +842,7 @@ function BlockView({
         transition: "opacity 0.15s",
       }}
     >
+      {editable && (
       <div
         onPointerDown={onHandlePointerDown}
         title="Drag to reorder"
@@ -856,6 +863,7 @@ function BlockView({
       >
         ⠿
       </div>
+      )}
       {block.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageSrc} alt="" style={{ width: "100%", display: "block" }} />
@@ -871,12 +879,14 @@ function BlockView({
       ) : (
         <HoverVideo src={block.src} poster={block.poster} />
       )}
+      {(editable || block.caption) && (
       <EditLine
         initial={block.caption || "Caption…"}
         style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.04em", marginTop: 8 }}
         onSave={onCaptionSave}
       />
-      <button onClick={onDelete} style={overlayBtn}>✕</button>
+      )}
+      {editable && <button onClick={onDelete} style={overlayBtn}>✕</button>}
     </div>
   )
 }
@@ -1119,6 +1129,7 @@ function SectionMedia({
   onAddImage: (src: string) => void
   onAddVideo: (url: string) => void
 }) {
+  const editable = useEditMode()
   const [hover, setHover] = useState(false)
   const isDragActive = drag.dragging !== null
   const isAppendTarget =
@@ -1157,7 +1168,7 @@ function SectionMedia({
           }}
         />
       ))}
-      <AddRow visible={hover && !isDragActive} onAddImage={onAddImage} onAddVideo={onAddVideo} />
+      {editable && <AddRow visible={hover && !isDragActive} onAddImage={onAddImage} onAddVideo={onAddVideo} />}
     </div>
   )
 }
@@ -1217,6 +1228,7 @@ function ProjectRail({ slug }: { slug: string }) {
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function ProjectTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
+  const editable = useEditMode()
   const [content, setContent] = useState<ProjectContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [saveError, setSaveError] = useState(false)
@@ -1464,6 +1476,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   const drag = useBlockDrag(moveBlock)
 
   useEffect(() => {
+    if (!editable) return
     const onKeyDown = (e: KeyboardEvent) => {
       const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
       if (!isUndo) return
@@ -1484,7 +1497,8 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editable])
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
@@ -1501,6 +1515,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
             style={{ color: "#bbb", fontSize: 10, letterSpacing: "0.18em", fontFamily: "monospace" }}
             onSave={v => patch({ tag: v.replace(/^\/\/\s*/, "") || "project" })}
           />
+          {editable && (
           <select
             value={content.font}
             onChange={e => patch({ font: e.target.value })}
@@ -1513,6 +1528,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
+          )}
         </div>
 
         {/* title */}
@@ -1593,6 +1609,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
           </section>
         ))}
 
+        {editable && (
         <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
           <button
             onClick={() => {
@@ -1621,6 +1638,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
             Save
           </button>
         </div>
+        )}
       </div>
 
       {savedMsg && (

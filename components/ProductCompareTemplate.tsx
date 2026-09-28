@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
+import { useEditMode } from "@/lib/editMode"
 import {
   useMediaSrc,
   storeImageFile,
@@ -152,16 +153,17 @@ function EditLine({
   initial, style, onSave,
 }: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
     <div
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: "text", whiteSpace: "pre-wrap", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", whiteSpace: "pre-wrap", ...style }}
     />
   )
 }
@@ -449,13 +451,14 @@ function EditBody({
   initial, placeholder, style, onSave,
 }: { initial: string; placeholder: string; style: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
+  const editable = useEditMode()
   const empty = useRef(!initial)
   const ph = makePlaceholder(placeholder)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    const expanded = initial ? expandAbTable(initial) : ph
+    const expanded = initial ? expandAbTable(initial) : (editable ? ph : "")
     ref.current.innerHTML = expanded
     // an "(Embed AB table)" marker becomes the table once and is then saved as
     // ordinary block html, so its cells edit and persist like any other text
@@ -466,7 +469,7 @@ function EditBody({
     <>
       <div
         ref={ref}
-        contentEditable
+        contentEditable={editable}
         suppressContentEditableWarning
         onFocus={() => {
           if (empty.current && ref.current?.querySelector("[data-ph]")) {
@@ -480,9 +483,9 @@ function EditBody({
           if (!html) e.currentTarget.innerHTML = ph
           onSave(html === ph ? "" : html)
         }}
-        style={{ outline: "none", cursor: "text", ...style }}
+        style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
       />
-      <FormatToolbar containerRef={ref} />
+      {editable && <FormatToolbar containerRef={ref} />}
     </>
   )
 }
@@ -513,6 +516,7 @@ function BlockImage({ src }: { src: string }) {
 function ColumnView({
   column, onChange,
 }: { column: Column; onChange: (c: Column) => void }) {
+  const editable = useEditMode()
   const imgRef = useRef<HTMLInputElement>(null)
 
   // stored in IndexedDB, with only an `idb:` ref kept in localStorage — see
@@ -557,17 +561,20 @@ function ColumnView({
           ) : (
             <>
               <BlockImage src={block.src} />
+              {(editable || block.caption) && (
               <EditLine
                 initial={block.caption || "Caption…"}
                 style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.04em", marginTop: 8 }}
                 onSave={caption => updateBlock(block.id, { caption })}
               />
+              )}
             </>
           )}
-          <button onClick={() => deleteBlock(block.id)} style={overlayBtn}>✕</button>
+          {editable && <button onClick={() => deleteBlock(block.id)} style={overlayBtn}>✕</button>}
         </div>
       ))}
 
+      {editable && (
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <button onClick={addText} style={btnStyle}>+ TEXT</button>
         <button onClick={() => imgRef.current?.click()} style={btnStyle}>+ IMAGE</button>
@@ -576,6 +583,7 @@ function ColumnView({
           onChange={e => { const f = e.target.files?.[0]; if (f) addImage(f); e.target.value = "" }}
         />
       </div>
+      )}
     </div>
   )
 }
@@ -635,6 +643,7 @@ function ProjectRail({ slug }: { slug: string }) {
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-project-${slug}`
+  const editable = useEditMode()
   const [content, setContent] = useState<CompareContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [saveError, setSaveError] = useState(false)
@@ -776,6 +785,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   }
 
   useEffect(() => {
+    if (!editable) return
     const onKeyDown = (e: KeyboardEvent) => {
       const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey
       if (!isUndo) return
@@ -796,7 +806,8 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editable])
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
@@ -813,6 +824,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
             style={{ color: "#bbb", fontSize: 10, letterSpacing: "0.18em", fontFamily: "monospace" }}
             onSave={v => patch({ tag: v.replace(/^\/\/\s*/, "") || "project" })}
           />
+          {editable && (
           <select
             value={content.font}
             onChange={e => patch({ font: e.target.value })}
@@ -825,6 +837,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
+          )}
         </div>
 
         {/* title */}
@@ -859,6 +872,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
           />
         </div>
 
+        {editable && (
         <div style={{ display: "flex", justifyContent: "center", marginTop: 56 }}>
           <button
             onClick={() => {
@@ -883,6 +897,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
             Save
           </button>
         </div>
+        )}
       </div>
 
       {savedMsg && (

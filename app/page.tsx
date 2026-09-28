@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useEditMode } from "@/lib/editMode"
 
 // ── types ─────────────────────────────────────────────────────────────────────
 interface HourEntry { label: string; pct: number; color: string }
@@ -37,10 +38,10 @@ const DEFAULT: HomeData = {
       { id: "sixth",    label: "Sixth",     slug: "sixth"    },
       { id: "drift",    label: "Drift",     slug: "drift"    },
     ]},
-    { id: "thoughts", label: "Thoughts", isArticles: true, items: [
+    { id: "thoughts", label: "Blog", isArticles: true, items: [
       { id: "t1", label: "Creative Paradigm in AI Era" },
     ]},
-    { id: "creatives", label: "Creatives", items: [
+    { id: "creatives", label: "Exploration", items: [
       { id: "c1", label: "Art"         },
       { id: "c2", label: "Photography" },
       { id: "c3", label: "Video"       },
@@ -160,12 +161,13 @@ function EditRichPara({
   initial, style, onSave,
 }: { initial: string; style?: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLParagraphElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.innerHTML = linkify(initial) }, [])
   return (
     <p
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onClick={e => {
         // anchors sit inside a contentEditable region, so navigate by hand
@@ -180,7 +182,7 @@ function EditRichPara({
         e.currentTarget.innerHTML = linkify(text)
         onSave(text)
       }}
-      style={{ outline: "none", cursor: "text", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
     />
   )
 }
@@ -190,16 +192,17 @@ function EditLine({
   initial, style, onSave,
 }: { initial: string; style?: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLSpanElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
     <span
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: "text", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
     />
   )
 }
@@ -209,12 +212,13 @@ function EditRichLine({
   initial, links, style, onSave,
 }: { initial: string; links?: LinkRef[]; style?: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLSpanElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.innerHTML = linkifyLabel(initial, links) }, [])
   return (
     <span
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onClick={e => {
         // anchors sit inside a contentEditable region, so navigate by hand
@@ -229,7 +233,7 @@ function EditRichLine({
         e.currentTarget.innerHTML = linkifyLabel(text, links)
         onSave(text)
       }}
-      style={{ outline: "none", cursor: "text", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
     />
   )
 }
@@ -239,15 +243,16 @@ function EditPara({
   initial, style, onSave,
 }: { initial: string; style?: React.CSSProperties; onSave: (v: string) => void }) {
   const ref = useRef<HTMLParagraphElement>(null)
+  const editable = useEditMode()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
     <p
       ref={ref}
-      contentEditable
+      contentEditable={editable}
       suppressContentEditableWarning
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: "text", ...style }}
+      style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
     />
   )
 }
@@ -268,6 +273,7 @@ function RowEl({
   onDrop: () => void
   onDragEnd: () => void
 }) {
+  const editable = useEditMode()
   const [hov, setHov] = useState(false)
   // the row only becomes draggable once the grip is pressed, so the
   // contentEditable label stays selectable with a normal click-drag
@@ -275,7 +281,7 @@ function RowEl({
 
   return (
     <div
-      draggable={armed}
+      draggable={editable && armed}
       onDragStart={e => { e.dataTransfer.effectAllowed = "move"; onDragStart() }}
       onDragEnter={onDragEnter}
       onDragOver={e => e.preventDefault()}
@@ -292,6 +298,7 @@ function RowEl({
         transition: "opacity 0.12s",
       }}
     >
+      {editable && (
       <span
         title="drag to reorder"
         onMouseDown={() => setArmed(true)}
@@ -305,6 +312,7 @@ function RowEl({
       >
         ⠿
       </span>
+      )}
       {item.links?.length ? (
         <a
           href={item.links[0].url}
@@ -330,6 +338,7 @@ function RowEl({
         onSave={onSave}
         style={{ fontSize: 13, color: "#222", letterSpacing: "0.01em", flex: 1 }}
       />
+      {editable && (
       <button
         onClick={onDelete}
         title="delete"
@@ -343,6 +352,7 @@ function RowEl({
       >
         ×
       </button>
+      )}
     </div>
   )
 }
@@ -361,6 +371,7 @@ function DriftIcon() {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
+  const editable = useEditMode()
   const [data, setData] = useState<HomeData | null>(null)
   // state drives the drop-indicator; the ref is the source of truth, because the
   // drag handlers can all fire within one render and would read a stale `drag`
@@ -380,6 +391,10 @@ export default function Home() {
       saved.sections = saved.sections.map(s => s.id === "thoughts" ? { ...s, isArticles: true } : s)
       // awards saved before they carried links get them by matching their label
       saved.sections = withAwardLinks(saved.sections)
+      // sections renamed after they were first saved under the old names
+      saved.sections = saved.sections.map(s =>
+        s.id === "thoughts" && s.label === "Thoughts" ? { ...s, label: "Blog" } :
+        s.id === "creatives" && s.label === "Creatives" ? { ...s, label: "Exploration" } : s)
       setData(saved)
     } catch {
       setData({ ...DEFAULT, sections: withAwardLinks(DEFAULT.sections) })
@@ -510,7 +525,7 @@ export default function Home() {
               <RowEl
                 key={item.id}
                 item={item}
-                basePath={sec.isArticles ? "/thoughts" : "/projects"}
+                basePath={sec.isArticles ? "/blog" : "/projects"}
                 dragging={drag?.si === si && drag.from === ii}
                 dropBefore={drag?.si === si && drag.over === ii && drag.from !== ii}
                 onDragStart={() => setBothDrag({ si, from: ii, over: ii })}
@@ -531,6 +546,7 @@ export default function Home() {
               />
             ))}
 
+            {editable && (
             <button
               onClick={() => {
                 const id = uid()
@@ -544,6 +560,7 @@ export default function Home() {
             >
               + ADD
             </button>
+            )}
           </div>
         ))}
 

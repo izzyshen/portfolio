@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import gsap from "gsap"
 import { PROJECTS } from "@/lib/projects"
+import { useEditMode } from "@/lib/editMode"
 
 type PatternType = "dots" | "grid" | "rings" | "code"
 
@@ -174,6 +175,7 @@ export default function FloatingScene() {
   const thumbInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const isNavigating  = useRef(false)
   const router        = useRouter()
+  const editable      = useEditMode()
 
   // ── Cards — built from live project data, not a hardcoded list ───────────
   const cardsBuilt = useRef(false)
@@ -470,6 +472,7 @@ export default function FloatingScene() {
                 </p>
 
                 {/* Thumbnail edit button */}
+                {editable && (
                 <button
                   className="thumb-btn"
                   onClick={e => { e.stopPropagation(); thumbInputRefs.current[i]?.click() }}
@@ -484,6 +487,7 @@ export default function FloatingScene() {
                 >
                   ⊕ IMG
                 </button>
+                )}
 
                 {/* Title + tag */}
                 <div style={{
@@ -501,6 +505,7 @@ export default function FloatingScene() {
               </div>
 
               {/* Hidden file input for thumbnail */}
+              {editable && (
               <input
                 ref={el => { thumbInputRefs.current[i] = el }}
                 type="file" accept="image/*" style={{ display: "none" }}
@@ -510,6 +515,7 @@ export default function FloatingScene() {
                   e.target.value = ""
                 }}
               />
+              )}
             </div>
           </div>
         ))}
