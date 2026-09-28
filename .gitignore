@@ -19,3 +19,4 @@ next-env.d.ts
 preview.html
 .vercel
 package-lock.json
+.env*
