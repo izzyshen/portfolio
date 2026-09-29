@@ -31,6 +31,29 @@ export function seedGallery(slug: string): unknown {
   return SEED.galleries?.[slug] ?? null
 }
 
+/** Serialize content for localStorage, stamped with when it was saved. */
+export function stamp(content: unknown): string {
+  return JSON.stringify({ ...(content as Json), _savedAt: new Date().toISOString() })
+}
+
+/**
+ * Newest wins: a local copy saved in this browser normally overrides the
+ * published seed, but a seed published AFTER that local save replaces it —
+ * otherwise a page once clicked into (blog posts are always editable) would
+ * pin its owner to a stale copy forever. Returns the parsed content to use.
+ */
+export function pickContent(raw: string | null, seed: unknown): unknown {
+  let local: Json | null = null
+  try { local = raw ? (JSON.parse(raw) as Json) : null } catch { local = null }
+  if (!local) return seed
+  if (!seed) return local
+  const seededAt = (seed as Json)._seededAt
+  const savedAt = local._savedAt
+  if (typeof seededAt !== "string") return local
+  if (typeof savedAt !== "string" || seededAt > savedAt) return seed
+  return local
+}
+
 /** The "Previous Projects" rows from the seeded landing page. */
 export function seedProjectList(): { title: string; slug: string }[] {
   const sections = (SEED.home?.sections ?? []) as { isProjects?: boolean; items: { label: string; slug?: string }[] }[]

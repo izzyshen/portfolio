@@ -144,7 +144,8 @@
      }
     ]
    }
-  ]
+  ],
+  "_seededAt": "2026-09-29T00:40:58.302981+00:00"
  },
  "projects": {
   "graphite-build-taste-with-ai": {
@@ -242,7 +243,8 @@
     "seed-prototype-outcome-0",
     "seed-design-decision-0",
     "seed-problem-defining-0"
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "mindmax-ai-co-thinker": {
    "tag": "project",
@@ -282,7 +284,8 @@
      "body": "",
      "blocks": []
     }
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "ai-commercial-product": {
    "tag": "project",
@@ -311,7 +314,8 @@
      ]
     }
    ],
-   "restoredSmartlead": true
+   "restoredSmartlead": true,
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "drift-rl-on-routing-system": {
    "tag": "project",
@@ -416,7 +420,8 @@
      "blocks": []
     }
    ],
-   "dismissedSeeds": []
+   "dismissedSeeds": [],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "narrowing-mirror": {
    "tag": "project",
@@ -454,7 +459,8 @@
      "body": "",
      "blocks": []
     }
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "art": {
    "tag": "project",
@@ -494,7 +500,8 @@
      "body": "",
      "blocks": []
     }
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "agentic-lead": {
    "tag": "project",
@@ -532,7 +539,8 @@
      "body": "",
      "blocks": []
     }
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "sixth-embodied-intelligence": {
    "tag": "project",
@@ -650,7 +658,8 @@
      "blocks": []
     }
    ],
-   "dismissedSeeds": []
+   "dismissedSeeds": [],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "graphite": {
    "tag": "project",
@@ -723,7 +732,8 @@
      "blocks": []
     }
    ],
-   "seededDemo": true
+   "seededDemo": true,
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   },
   "peri-ai-agentic-creator-tool": {
    "tag": "project",
@@ -821,14 +831,16 @@
     "seed-inquiries-page-0",
     "seed-agent-conversation-0",
     "seed-approve-reject-0"
-   ]
+   ],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   }
  },
  "articles": {
   "creative-paradigm-in-ai-era": {
    "title": "How do we Design",
    "body": "<div style=\"border-left: 1px solid #d9d7d0; padding: 2px 0 2px 16px; margin-bottom: 8px;\"><div style=\"font-size: 10px; letter-spacing: 0.15em; color: #b0aea8;\">TL;DR</div><div><br></div><div><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">the key thought</span> — software shouldn't be a pile of tabs and layers we jump between. it should feel like drawing on a limitless paper with every tool at hand, and it should understand the context of what i'm making, not just what i manage to type into a query.</div><div><br></div><div><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">the evidence</span> — spending a day making a 10s video: too many tools to pick from, inspirations scattered across a bunch of websites, buggy steps where the llm had no context of my work, and a lot of waiting around for generations. none of it felt like the intuitive tutor-and-references process i had in architecture school.</div><div><br></div><div><span style=\"font-weight: 700; color: rgb(17, 17, 17);\">the key takeaway</span> — bring the intuition of the design studio into software: keep memory of the work in progress, surface references in context throughout the journey, and give real-time feedback like a tutor would. the future is software that customizes itself to the work, not us adapting to a bunch of interfaces.</div></div><div><br></div><div>The way we interact with software has become omni, we converge to chatboxes and somehow just stay within the code interface. But is this the ultimate interface? Chatbox and browser? I actually think instead of UI changing continuously, what if the software interaction itself is fully customized?&nbsp;</div><div><br></div><div>I've been thinking about how the design process actually works and if there's a way to condense a protocol for my creative thought process.</div><div><br></div><div>I used to find a location, a context, an existing meaning, and hold onto it. Break a big idea into elements, and for each element find references of what other people have done, and see if I can combine those things to become a whole. What my tutor does is also to provide me visuals of other pioneers' work and evoke my thought. You would draw and prototype from mimicking to creating, eventually turning the ambiguity into a final work. However this intuitive process is a bit lost in the current tooling world, where we separate the inspiration from the work.</div><div><br></div><div>Take an example: if we want visual references we would go to cosmos, are.na, pinterest, and query our thought for pure visual references. We have to translate our work or idea into text and query to retrieve a similar idea/visual from an artist or work. But what if there's a way to keep memory of your current work and just give you references to evoke your thoughts and ideas throughout the entire journey, so it understands context, not just what you can express.&nbsp;</div><div><br></div><div>can we bring the intuition we have in design into software, in the way we collaborate and build something new.&nbsp;</div><div><br></div><div>the way i communicate with tutors about my ideas is through presentation and talking, and they give feedback. what if this is real time, anytime, with AI in context and with memory of my work. they can see and understand what i'm doing and expand my scope beyond current knowledge.&nbsp;</div><div><br></div><div>software should not have the limitation of tabs and layers of files, with the user constrained within each tab they're in to execute a workflow. it should be as intuitive as drawing on a limitless paper with the full capacity of all tools at your hand. Like a painter at the canvas. Or as easy as taking a long walk with a stream of thoughts.&nbsp;</div><div><br></div><div>There is a lot of waiting in today's creation. Waiting for generation to happen, and not having a streamlined workflow. so how do we follow a more streamlined workflow to feel like we're in the creative zone, instead of being interrupted by things stopping and restarting?</div><div><br></div><div>a few things to conclude from today's experience making a 10s simple video:</div><div><br></div><div>1. too many tools and models, hard to decide, even with pre-knowledge</div><div>2. the idea stage was hard: gathering all the inspirations as they're from so many different websites&nbsp;</div><div>3. stuck at a lot of buggy parts of the tool, kept searching for answers (ie. using recast to get the exact motion). the llm has no context so i had to intentionally ask after a few failed trials&nbsp;</div><div>4. the llm doesn't have the full context and keeps giving me guidance that doesn't solve the exact problem</div><div>5. there's a lot of wait time, it takes a long time to generate, and waiting around doesn't keep me creative</div><div>6. opened a bunch of tabs, genuinely believe in the future <span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"text-decoration: underline;\">software is customized, not jumping between a bunch of interfaces</span></span></div><div><br></div><div>still not sure about the business model, i think i know the rough crowd i'm serving and their issues</div>",
-   "readings": []
+   "readings": [],
+   "_seededAt": "2026-09-29T00:40:58.302981+00:00"
   }
  },
  "galleries": {}

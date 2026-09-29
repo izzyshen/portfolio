@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
 import { useEditMode } from "@/lib/editMode"
-import { seedProject } from "@/lib/seed"
+import { seedProject, pickContent, stamp } from "@/lib/seed"
 import {
   useMediaSrc,
   storeImageFile,
@@ -665,7 +665,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
     const load = () => {
       try {
         const raw = localStorage.getItem(storageKey)
-        setContent(normalize(raw ? JSON.parse(raw) : seedProject(slug), slug))
+        setContent(normalize(pickContent(raw, seedProject(slug)), slug))
       } catch {
         setContent(normalize(seedProject(slug), slug))
       }
@@ -684,7 +684,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
   const pendingRef = useRef<CompareContent | null>(null)
 
   const writeNow = async (next: CompareContent): Promise<boolean> => {
-    const payload = JSON.stringify(next)
+    const payload = stamp(next)
     const attempt = () => {
       localStorage.setItem(storageKey, payload)
       pendingRef.current = null
@@ -720,7 +720,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
       if (!pendingRef.current) return
       clearTimeout(timer.current)
       try {
-        localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+        localStorage.setItem(storageKey, stamp(pendingRef.current))
         pendingRef.current = null
       } catch {
         // quota exceeded at unload time — nothing more we can do here
@@ -755,7 +755,7 @@ export default function ProductCompareTemplate({ slug }: { slug: string }) {
       if (changed) {
         const migrated = { ...content, columns: columns as [Column, Column] }
         setContent(migrated)
-        try { localStorage.setItem(storageKey, JSON.stringify(migrated)) } catch { /* retried on next save */ }
+        try { localStorage.setItem(storageKey, stamp(migrated)) } catch { /* retried on next save */ }
       }
       await pruneOrphanedMedia()
     })()

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { PROJECTS } from "@/lib/projects"
 import { useEditMode } from "@/lib/editMode"
-import { seedProject } from "@/lib/seed"
+import { seedProject, pickContent, stamp } from "@/lib/seed"
 import {
   useMediaSrc,
   storeImageFile,
@@ -1254,7 +1254,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
           const legacySlug = legacySlugFor(slug)
           if (legacySlug) raw = localStorage.getItem(`portfolio-project-${legacySlug}`)
         }
-        setContent(normalize(raw ? JSON.parse(raw) : seedProject(slug), slug))
+        setContent(normalize(pickContent(raw, seedProject(slug)), slug))
       } catch {
         setContent(normalize(seedProject(slug), slug))
       }
@@ -1278,7 +1278,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
   /** The single write path — used by the debounce, the Save button, and the
    *  tab-hidden flush, so all three behave identically. */
   const writeNow = async (next: ProjectContent): Promise<boolean> => {
-    const payload = JSON.stringify(next)
+    const payload = stamp(next)
     const attempt = () => {
       localStorage.setItem(storageKey, payload)
       pendingRef.current = null
@@ -1316,7 +1316,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
       if (!pendingRef.current) return
       clearTimeout(timer.current)
       try {
-        localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+        localStorage.setItem(storageKey, stamp(pendingRef.current))
         pendingRef.current = null
       } catch {
         // quota exceeded — nothing more we can do at unload time
@@ -1343,7 +1343,7 @@ export default function ProjectTemplate({ slug }: { slug: string }) {
         setContent(migrated)
         // write straight through: the whole point is to free the space now,
         // and going via the debounce would leave the bloated copy in place
-        try { localStorage.setItem(storageKey, JSON.stringify(migrated)) } catch { /* retried on next save */ }
+        try { localStorage.setItem(storageKey, stamp(migrated)) } catch { /* retried on next save */ }
       }
       await pruneOrphanedMedia()
     })()

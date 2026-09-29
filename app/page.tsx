@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useEditMode } from "@/lib/editMode"
-import { seedHome } from "@/lib/seed"
+import { seedHome, pickContent, stamp } from "@/lib/seed"
 
 // ── types ─────────────────────────────────────────────────────────────────────
 interface HourEntry { label: string; pct: number; color: string }
@@ -388,7 +388,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      const saved: HomeData = raw ? JSON.parse(raw) : (seedHome<HomeData>() ?? DEFAULT)
+      const saved: HomeData = (pickContent(raw, seedHome<HomeData>()) as HomeData | null) ?? DEFAULT
       // a bio saved before contact links existed has nothing to linkify — give it
       // the sentence once, then leave it alone (it stays editable like any text)
       if (!HAS_CONTACT.test(saved.bio)) saved.bio = saved.bio.trimEnd() + CONTACT_SENTENCE
@@ -414,7 +414,7 @@ export default function Home() {
 
   const persist = (next: HomeData) => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(next)), 400)
+    timer.current = setTimeout(() => localStorage.setItem(STORAGE_KEY, stamp(next)), 400)
   }
 
   const patch = (up: Partial<HomeData>) => {

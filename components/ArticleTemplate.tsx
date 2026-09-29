@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useEditMode } from "@/lib/editMode"
-import { seedArticle } from "@/lib/seed"
+import { seedArticle, pickContent, stamp } from "@/lib/seed"
 
 interface ReadingItem {
   id: string
@@ -508,7 +508,7 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     const load = () => {
       try {
         const raw = localStorage.getItem(storageKey)
-        setContent(normalize(raw ? JSON.parse(raw) : seedArticle(slug), slug))
+        setContent(normalize(pickContent(raw, seedArticle(slug)), slug))
       } catch {
         setContent(normalize(seedArticle(slug), slug))
       }
@@ -530,7 +530,7 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     pendingRef.current = next
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      localStorage.setItem(storageKey, JSON.stringify(next))
+      localStorage.setItem(storageKey, stamp(next))
       pendingRef.current = null
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 1200)
@@ -541,7 +541,7 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
     const flush = () => {
       if (!pendingRef.current) return
       clearTimeout(timer.current)
-      localStorage.setItem(storageKey, JSON.stringify(pendingRef.current))
+      localStorage.setItem(storageKey, stamp(pendingRef.current))
       pendingRef.current = null
     }
     const onVisibilityChange = () => { if (document.visibilityState === "hidden") flush() }

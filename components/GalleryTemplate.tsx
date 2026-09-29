@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useMediaSrc, storeImageFile, pruneOrphanedMedia } from "@/lib/mediaStore"
 import { useEditMode } from "@/lib/editMode"
-import { seedGallery } from "@/lib/seed"
+import { seedGallery, pickContent, stamp } from "@/lib/seed"
 
 /**
  * Art / Photography: an edge-aligned image grid. Every cell is the same size
@@ -116,7 +116,7 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
     const load = () => {
       try {
         const raw = localStorage.getItem(storageKey)
-        setContent(normalize(raw ? JSON.parse(raw) : seedGallery(slug), slug))
+        setContent(normalize(pickContent(raw, seedGallery(slug)), slug))
       } catch {
         setContent(normalize(seedGallery(slug), slug))
       }
@@ -129,7 +129,7 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
 
   const write = (next: GalleryContent) => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(next))
+      localStorage.setItem(storageKey, stamp(next))
       pendingRef.current = null
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 1200)

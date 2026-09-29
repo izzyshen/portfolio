@@ -6,7 +6,9 @@ Writes public/media/<key>.<ext> for every uploaded file, rewrites `idb:` refs to
 those paths, and writes content/seed.json = { home, projects, articles }, which
 the templates use as the default content every visitor sees.
 """
-import base64, json, re, sys, pathlib
+import base64, json, re, sys, pathlib, datetime
+
+NOW = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EXT = {"image/png": "png", "image/webp": "webp", "image/jpeg": "jpg", "image/gif": "gif",
@@ -31,6 +33,8 @@ def rewrite(s: str) -> str:
 seed = {"home": None, "projects": {}, "articles": {}, "galleries": {}}
 for key, raw in text.items():
     val = json.loads(rewrite(raw))
+    val.pop("_savedAt", None)
+    val["_seededAt"] = NOW
     if key == "portfolio-home":
         for s in val["sections"]:
             if s["id"] == "thoughts" and s["label"] == "Thoughts": s["label"] = "Blog"
