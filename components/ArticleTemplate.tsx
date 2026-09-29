@@ -44,10 +44,10 @@ function normalize(raw: unknown, slug: string): ArticleContent {
 
 // ── editable single line ──────────────────────────────────────────────────────
 function EditLine({
-  initial, style, onSave,
-}: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
+  initial, style, onSave, subtle,
+}: { initial: string; style: React.CSSProperties; onSave: (v: string) => void; subtle: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
-  const editable = useEditMode()
+  const editable = true
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.textContent = initial }, [])
   return (
@@ -57,7 +57,7 @@ function EditLine({
       suppressContentEditableWarning
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur() } }}
       onBlur={e => onSave(e.currentTarget.textContent ?? "")}
-      style={{ outline: "none", cursor: editable ? "text" : "inherit", whiteSpace: "pre-wrap", ...style }}
+      style={{ outline: "none", cursor: subtle ? "default" : "text", whiteSpace: "pre-wrap", ...style }}
     />
   )
 }
@@ -286,7 +286,7 @@ const formatBtnStyle: React.CSSProperties = {
 
 /** Floating toolbar that appears above whatever text is selected inside
  *  `containerRef`, and only then — hidden the rest of the time. */
-function FormatToolbar({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+function FormatToolbar({ containerRef, subtle }: { containerRef: React.RefObject<HTMLDivElement | null>; subtle: boolean }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
@@ -322,7 +322,9 @@ function FormatToolbar({ containerRef }: { containerRef: React.RefObject<HTMLDiv
     <div
       onMouseDown={e => e.preventDefault()}
       style={{
-        position: "fixed", top: pos.top, left: pos.left, transform: "translateX(-50%)",
+        position: "fixed", top: pos.top, left: pos.left,
+        transform: subtle ? "translateX(-50%) scale(0.55)" : "translateX(-50%)",
+        transformOrigin: "bottom center", opacity: subtle ? 0.35 : 1,
         display: "flex", alignItems: "center", gap: 2,
         background: "#222", borderRadius: 4, padding: "3px 4px",
         boxShadow: "0 4px 14px rgba(0,0,0,0.18)", zIndex: 200,
@@ -343,16 +345,16 @@ function FormatToolbar({ containerRef }: { containerRef: React.RefObject<HTMLDiv
 const PLACEHOLDER = '<span data-ph style="color:#c2c2bc;pointer-events:none">Start writing…</span>'
 
 function EditBody({
-  initial, style, onSave,
-}: { initial: string; style: React.CSSProperties; onSave: (v: string) => void }) {
+  initial, style, onSave, subtle,
+}: { initial: string; style: React.CSSProperties; onSave: (v: string) => void; subtle: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
-  const editable = useEditMode()
+  const editable = true
   const empty = useRef(!initial)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ref.current) return
-    ref.current.innerHTML = initial || (editable ? PLACEHOLDER : "")
+    ref.current.innerHTML = initial || (subtle ? "" : PLACEHOLDER)
   }, [])
 
   return (
@@ -373,18 +375,18 @@ function EditBody({
           if (!html) e.currentTarget.innerHTML = PLACEHOLDER
           onSave(html === PLACEHOLDER ? "" : html)
         }}
-        style={{ outline: "none", cursor: editable ? "text" : "inherit", ...style }}
+        style={{ outline: "none", cursor: subtle ? "default" : "text", ...style }}
       />
-      {editable && <FormatToolbar containerRef={ref} />}
+      <FormatToolbar containerRef={ref} subtle={subtle} />
     </>
   )
 }
 
 // ── one reading row ────────────────────────────────────────────────────────
 function ReadingRow({
-  item, onDelete, onSave,
-}: { item: ReadingItem; onDelete: () => void; onSave: (title: string) => void }) {
-  const editable = useEditMode()
+  item, onDelete, onSave, subtle,
+}: { item: ReadingItem; onDelete: () => void; onSave: (title: string) => void; subtle: boolean }) {
+  const editable = true
   const [hov, setHov] = useState(false)
   return (
     <div
@@ -404,6 +406,7 @@ function ReadingRow({
       <EditLine
         initial={item.title}
         onSave={onSave}
+        subtle={subtle}
         style={{ fontSize: 13, color: "#333", letterSpacing: "0.01em", flex: 1 }}
       />
       <span style={{ fontSize: 11, color: "#c2c0ba", flexShrink: 0, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -414,9 +417,9 @@ function ReadingRow({
         onClick={onDelete}
         title="delete"
         style={{
-          opacity: hov ? 1 : 0, transition: "opacity 0.12s",
+          opacity: hov ? (subtle ? 0.45 : 1) : 0, transition: "opacity 0.12s",
           background: "none", border: "none",
-          color: "#bbb", fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1, flexShrink: 0,
+          color: subtle ? "#e2e2e2" : "#bbb", fontSize: subtle ? 7 : 14, cursor: "pointer", padding: "0 2px", lineHeight: 1, flexShrink: 0,
         }}
       >
         ×
@@ -439,9 +442,13 @@ const fieldStyle: React.CSSProperties = {
   color: "#333", fontSize: 12, padding: "6px 10px", outline: "none",
 }
 
-function AddReadingRow({ onAdd }: { onAdd: (title: string, url: string) => void }) {
+function AddReadingRow({ onAdd, subtle }: { onAdd: (title: string, url: string) => void; subtle: boolean }) {
   const [title, setTitle] = useState("")
   const [url, setUrl] = useState("")
+  const [hov, setHov] = useState(false)
+  const shrink: React.CSSProperties = subtle
+    ? { transform: "scale(0.5)", transformOrigin: "left top", opacity: hov ? 0.45 : 0.08, transition: "opacity 0.15s" }
+    : {}
 
   const submit = () => {
     if (!url.trim()) return
@@ -451,7 +458,11 @@ function AddReadingRow({ onAdd }: { onAdd: (title: string, url: string) => void 
   }
 
   return (
-    <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ display: "flex", gap: 8, marginTop: subtle ? 6 : 14, ...shrink }}
+    >
       <input
         value={title}
         onChange={e => setTitle(e.target.value)}
@@ -473,7 +484,11 @@ function AddReadingRow({ onAdd }: { onAdd: (title: string, url: string) => void 
 // ── main ──────────────────────────────────────────────────────────────────────
 export default function ArticleTemplate({ slug }: { slug: string }) {
   const storageKey = `portfolio-article-${slug}`
-  const editable = useEditMode()
+  // blog posts are always editable by their owner; outside edit mode the
+  // controls shrink to a few faint pixels so readers don't notice them
+  const editMode = useEditMode()
+  const editable = true
+  const subtle = !editMode
   const [content, setContent] = useState<ArticleContent | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [undoneMsg, setUndoneMsg] = useState(false)
@@ -586,12 +601,14 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
 
         <EditLine
           initial={content.title}
+          subtle={subtle}
           style={{ fontSize: 28, fontWeight: 400, letterSpacing: "0.02em", color: "#111", marginBottom: 36 }}
           onSave={v => patch({ title: v || content.title })}
         />
 
         <EditBody
           initial={content.body}
+          subtle={subtle}
           style={{ color: "#444", fontSize: 15, lineHeight: 1.95, minHeight: 240, marginBottom: 64 }}
           onSave={html => patch({ body: html })}
         />
@@ -609,26 +626,26 @@ export default function ArticleTemplate({ slug }: { slug: string }) {
             <ReadingRow
               key={r.id}
               item={r}
+              subtle={subtle}
               onDelete={() => patch({ readings: content.readings.filter((_, j) => j !== i) })}
               onSave={title => patch({ readings: content.readings.map((it, j) => j === i ? { ...it, title } : it) })}
             />
           ))}
 
-          {editable && (
           <AddReadingRow
+            subtle={subtle}
             onAdd={(title, url) => patch({ readings: [...content.readings, { id: uid(), title, url }] })}
           />
-          )}
         </div>
       </div>
 
       {savedMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#c4c2bc", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+        <div style={{ position: "fixed", bottom: 28, right: 32, color: subtle ? "#e6e4de" : "#c4c2bc", fontSize: subtle ? 6 : 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
           SAVED
         </div>
       )}
       {undoneMsg && (
-        <div style={{ position: "fixed", bottom: 28, right: 32, color: "#a08c5c", fontSize: 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
+        <div style={{ position: "fixed", bottom: 28, right: 32, color: subtle ? "#e6e4de" : "#a08c5c", fontSize: subtle ? 6 : 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
           UNDONE — ⌘Z AGAIN FOR MORE
         </div>
       )}

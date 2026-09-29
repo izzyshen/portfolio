@@ -210,10 +210,11 @@ function EditLine({
 
 // ── editable line that keeps its inline external links live ──────────────────
 function EditRichLine({
-  initial, links, style, onSave,
-}: { initial: string; links?: LinkRef[]; style?: React.CSSProperties; onSave: (v: string) => void }) {
+  initial, links, style, onSave, editable: forced,
+}: { initial: string; links?: LinkRef[]; style?: React.CSSProperties; onSave: (v: string) => void; editable?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const editable = useEditMode()
+  const editMode = useEditMode()
+  const editable = forced ?? editMode
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (ref.current) ref.current.innerHTML = linkifyLabel(initial, links) }, [])
   return (
@@ -260,11 +261,15 @@ function EditPara({
 
 // ── single row (editable label + project link + delete) ──────────────────────
 function RowEl({
-  item, basePath, onDelete, onSave,
+  item, basePath, onDelete, onSave, editable, subtle,
   dragging, dropBefore, onDragStart, onDragEnter, onDrop, onDragEnd,
 }: {
   item: RowItem
   basePath: string
+  /** controls shown at all */
+  editable: boolean
+  /** controls shrunk to a few faint pixels — editable for its owner, invisible to readers */
+  subtle: boolean
   onDelete: () => void
   onSave: (v: string) => void
   dragging: boolean
@@ -274,7 +279,6 @@ function RowEl({
   onDrop: () => void
   onDragEnd: () => void
 }) {
-  const editable = useEditMode()
   const [hov, setHov] = useState(false)
   // the row only becomes draggable once the grip is pressed, so the
   // contentEditable label stays selectable with a normal click-drag
@@ -305,9 +309,9 @@ function RowEl({
         onMouseDown={() => setArmed(true)}
         onMouseUp={() => setArmed(false)}
         style={{
-          position: "absolute", left: -20,
-          opacity: hov ? 1 : 0, transition: "opacity 0.12s",
-          color: "#c4c4c4", fontSize: 12, cursor: "grab",
+          position: "absolute", left: subtle ? -12 : -20,
+          opacity: hov ? (subtle ? 0.45 : 1) : 0, transition: "opacity 0.12s",
+          color: subtle ? "#e2e2e2" : "#c4c4c4", fontSize: subtle ? 6 : 12, cursor: "grab",
           userSelect: "none", lineHeight: 1,
         }}
       >
@@ -337,17 +341,18 @@ function RowEl({
         initial={item.label}
         links={item.links}
         onSave={onSave}
-        style={{ fontSize: 13, color: "#222", letterSpacing: "0.01em", flex: 1 }}
+        style={{ fontSize: 13, color: "#222", letterSpacing: "0.01em", flex: 1, ...(subtle ? { cursor: "default" } : {}) }}
+        editable={editable}
       />
       {editable && (
       <button
         onClick={onDelete}
         title="delete"
         style={{
-          opacity: hov ? 1 : 0,
+          opacity: hov ? (subtle ? 0.45 : 1) : 0,
           transition: "opacity 0.12s",
           background: "none", border: "none",
-          color: "#bbb", fontSize: 14,
+          color: subtle ? "#e2e2e2" : "#bbb", fontSize: subtle ? 7 : 14,
           cursor: "pointer", padding: "0 2px", lineHeight: 1, flexShrink: 0,
         }}
       >
@@ -512,7 +517,12 @@ export default function Home() {
         </div>
 
         {/* ── sections ── */}
-        {data.sections.map((sec, si) => (
+        {data.sections.map((sec, si) => {
+          // the Blog section stays editable for its owner even outside edit
+          // mode, with its controls shrunk to near-invisible
+          const secEditable = editable || !!sec.isArticles
+          const subtle = !editable && !!sec.isArticles
+          return (
           <div key={sec.id} style={{ marginBottom: 40 }}>
             <p style={{ margin: "0 0 14px" }}>
               <EditLine
@@ -527,6 +537,8 @@ export default function Home() {
                 key={item.id}
                 item={item}
                 basePath={sec.isArticles ? "/blog" : "/projects"}
+                editable={secEditable}
+                subtle={subtle}
                 dragging={drag?.si === si && drag.from === ii}
                 dropBefore={drag?.si === si && drag.over === ii && drag.from !== ii}
                 onDragStart={() => setBothDrag({ si, from: ii, over: ii })}
@@ -547,13 +559,17 @@ export default function Home() {
               />
             ))}
 
-            {editable && (
+            {secEditable && (
             <button
               onClick={() => {
                 const id = uid()
                 patchSection(si, { items: [...sec.items, { id, label: "New item", slug: `item-${id}` }] })
               }}
-              style={{
+              style={subtle ? {
+                marginTop: 2, background: "none", border: "none",
+                color: "#e4e4e4", fontSize: 6, letterSpacing: "0.1em",
+                cursor: "pointer", padding: "2px 0", display: "block", opacity: 0.6,
+              } : {
                 marginTop: 8, background: "none", border: "none",
                 color: "#ccc", fontSize: 10, letterSpacing: "0.14em",
                 cursor: "pointer", padding: "4px 0", display: "block",
@@ -563,7 +579,8 @@ export default function Home() {
             </button>
             )}
           </div>
-        ))}
+          )
+        })}
 
       </div>
     </main>
