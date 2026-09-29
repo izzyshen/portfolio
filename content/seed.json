@@ -65,31 +65,6 @@
      {
       "id": "t1",
       "label": "Creative Paradigm in AI Era"
-     },
-     {
-      "id": "09dkqm",
-      "label": "Telepathy Encode and Decode",
-      "slug": "telepathy-encode-and-decode"
-     },
-     {
-      "id": "sy66zo",
-      "label": "Robotics like Lego",
-      "slug": "energy-consumption-for-data-centers"
-     },
-     {
-      "id": "99egny",
-      "label": "Fleet simulation",
-      "slug": "fleet-simulation"
-     },
-     {
-      "id": "p7jkh6",
-      "label": "How to actually build a LLM?",
-      "slug": "item-p7jkh6"
-     },
-     {
-      "id": "m8v3mg",
-      "label": "AI Co-Thinking content",
-      "slug": "item-m8v3mg"
      }
     ],
     "isArticles": true
@@ -847,34 +822,9 @@
   }
  },
  "articles": {
-  "item-p7jkh6": {
-   "title": "Building a LLM",
-   "body": "process of how its built and some personal thoughts",
-   "readings": []
-  },
-  "energy-consumption-for-data-centers": {
-   "title": "Robotics like Lego",
-   "body": "Is there a way to make robotics more accessible? make consumers all have the power to build and express physical creativity with a framework",
-   "readings": []
-  },
   "creative-paradigm-in-ai-era": {
    "title": "How do we Design",
    "body": "<div>The way we interact with softwares have become omni, we converge to chatboxes and somehow just stay within the code interface. But is this the ultimate interface? Chatbox and Browser? I actually think instead of UI changing continuously, what if the software interaction itself is fully customized?&nbsp;</div><div><br></div>Ive been thinking about how the design process actually works and if there's a way to condense a protocol for my creative thought process.<div><br></div><div>I used to find a location, a context, an existing meaning, hold onto it. Break a big idea into elements and each element finding references of what other people have done and if i can combine those things to become a whole. What my tutor does is also to provide me visuals of other pioneers work and evoke my thought. You would draw and prototype from mimicking to creating, eventually turning the ambiguity into a final work. However this intuitive process is abit lost in the current tooling world, where we separate the inspiration from the work.</div><div><br></div><div>Take an example, if we want visual references we would goto cosmos, are.na, pinterest, query our thought for pure visual references. We have to translate our work or idea into texts and query to retrieve similar idea/visual from artist or work. but what if theres a way to keep memory of your current work and just give you reference to evoke your thought and ideas throughout the entire journey so it understands context not just what you can express.&nbsp;</div><div><br></div><div>can we bring the intuition we have in design into software, in the way we collaborate and build something new.&nbsp;</div><div><br></div><div>the way i communicate with tutors about my ideas is through presentation and talking and they will give feedback, what if this is real time, anytime with AI in context and memory of my work. they can see and understand what im doing and expand my scope beyond current knowledge.&nbsp;</div><div><br></div><div>software should not have the limitation of taps and layers of files, and the user's constrained within each tab theyr in to execute a workflow. it should be as intuitive as drawing on a limitless paper with full capacities of all tools at ur hand. Like a painter at the canvas. Or as easy as one talking a long walk with a stream of thoughts.&nbsp;</div><div><br></div><div>There is alot of waiting in today's creation. Waiting for generation to happy and not having a streamline of workflow. so how we follow a more streamlined workflow to feel like wer in the creative zone? instead of being interrupted by things stopping and rehappening?</div><div><br></div><div>a few things to conclude from today's experience making a 10s simple video:</div><div><br></div><div>1. too many tools and models, hard to decide, even with pre-knowledge</div><div>2. the idea stage was hard to gather all the inspirations as theyr from so many different websites&nbsp;</div><div>2. stuck at alot of buggy parts of the tool keep searching for answers (ie. use recast for having the exact motion) llm has no context so i have to intentionally ask after a few failed trails&nbsp;</div><div>3. llm doesnt have the full context and keep giving me guidance that doesnt solve the exact problem</div><div>4. theres alot of wait time, takes along time to generate, waiting around does keep me creative</div><div>5. opened a bunch of tabs, genuiinely believe in the future<span style=\"font-weight: 700; color: rgb(17, 17, 17);\"><span style=\"text-decoration: underline;\"> softwares are customized not jumping between a bunch of interfaces</span></span></div><div><br></div><div>still not sure about the business model, i think i know the rough crowd im serving and their issues</div>",
-   "readings": []
-  },
-  "fleet-simulation": {
-   "title": "Fleet Simulation",
-   "body": "pending...<div><br></div><div>I want to understand how to simulate EV car movements in the city with RL, to understand how to reduce energy consumption</div>",
-   "readings": []
-  },
-  "telepathy-encode-and-decode": {
-   "title": "Telepathy Encode And Decode",
-   "body": "<div><span style=\"font-size: 13px;\">Our current way of communicating our intent is through query -- typing in words that translate our thought into an ask. The same in content-based product, or tool-based product like AI chatbot. Then we realized that people do not normally express themselves accurately, therefore we developed user behaviour understanding, to depict user's true intent based on the scaled user behaviour (ie. clicks, view, engagement time etc). But I believe this is only translating&nbsp; algorithmic pattern onto individuals, not really understanding the user's intention. For example in social media, at this time of the day I just want to watch knowledge based push but some time I just want to watch entertainment stuff. This intention cannot be captured immediately, resulting in me dropping from the social media page as my need was not fulfilled. I am not suggesting to get rid of query completely because its still the strongest intent, but above the user behaviour layer, is there another way for us to translate out thought into content that continuously evolve.</span></div><span style=\"font-size: 13px;\"><div><span style=\"font-size: 13px;\"><br></span></div>I've been working on query understanding, this made me start to think about the future interface of interactions. For decades, we have been translating our intent to writing and let computers understand our thought linguistically, but is there a way to combine brain signals to predict pre-linguistic intention before we know it?<div><div><br></div><div>1. Collection&nbsp;</div><div>2. Labelling</div><div>3. Architecture</div><div>4. Output</div><div>5. Testing</div></div><div><br></div><div>Conclusion:</div><div>I believe there should be a protocol that allows all type of brain signals to be involved and therefore creating the largest dataset without doing singular experiments</div></span><div></div>",
-   "readings": []
-  },
-  "item-m8v3mg": {
-   "title": "How to build a social media that can be controlled",
-   "body": "",
    "readings": []
   }
  }
