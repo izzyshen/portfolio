@@ -9,7 +9,7 @@ import { seedHome } from "@/lib/seed"
 interface HourEntry { label: string; pct: number; color: string }
 interface LinkRef    { text: string; url: string }
 interface RowItem    { id: string; label: string; slug?: string; links?: LinkRef[] }
-interface SectionDef { id: string; label: string; isProjects?: boolean; isArticles?: boolean; items: RowItem[] }
+interface SectionDef { id: string; label: string; isProjects?: boolean; isArticles?: boolean; isExploration?: boolean; items: RowItem[] }
 
 interface HomeData {
   name: string
@@ -42,10 +42,10 @@ const DEFAULT: HomeData = {
     { id: "thoughts", label: "Blog", isArticles: true, items: [
       { id: "t1", label: "Creative Paradigm in AI Era" },
     ]},
-    { id: "creatives", label: "Exploration", items: [
-      { id: "c1", label: "Art"         },
-      { id: "c2", label: "Photography" },
-      { id: "c3", label: "Video"       },
+    { id: "creatives", label: "Exploration", isExploration: true, items: [
+      { id: "c1", label: "Art",          slug: "art"          },
+      { id: "c2", label: "Photography",  slug: "photography"  },
+      { id: "c3", label: "Paper Review", slug: "paper-review" },
     ]},
     { id: "awards", label: "Awards", items: [
       { id: "a1", label: "Hardmode Winner - Featured in Anthropic Post" },
@@ -395,6 +395,11 @@ export default function Home() {
       // a Thoughts section saved before the article template existed still
       // routes through /projects — flip it so old data gets the new template too
       saved.sections = saved.sections.map(s => s.id === "thoughts" ? { ...s, isArticles: true } : s)
+      // Exploration rows saved before they routed to /exploration (Art, Photography,
+      // Video with no slugs) become the current Art / Photography / Paper Review set
+      saved.sections = saved.sections.map(s => s.id === "creatives" && s.items.some(it => !it.slug)
+        ? { ...s, isExploration: true, items: DEFAULT.sections.find(d => d.id === "creatives")!.items }
+        : s.id === "creatives" ? { ...s, isExploration: true } : s)
       // awards saved before they carried links get them by matching their label
       saved.sections = withAwardLinks(saved.sections)
       // sections renamed after they were first saved under the old names
@@ -536,7 +541,7 @@ export default function Home() {
               <RowEl
                 key={item.id}
                 item={item}
-                basePath={sec.isArticles ? "/blog" : "/projects"}
+                basePath={sec.isArticles ? "/blog" : sec.isExploration ? "/exploration" : "/projects"}
                 editable={secEditable}
                 subtle={subtle}
                 dragging={drag?.si === si && drag.from === ii}

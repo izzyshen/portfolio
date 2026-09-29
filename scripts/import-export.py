@@ -28,7 +28,7 @@ def rewrite(s: str) -> str:
     return re.sub(r"idb:([a-z0-9]+-[a-z0-9]+)", lambda m: paths.get(m.group(1), m.group(0)), s)
 
 # 2. text → seed
-seed = {"home": None, "projects": {}, "articles": {}}
+seed = {"home": None, "projects": {}, "articles": {}, "galleries": {}}
 for key, raw in text.items():
     val = json.loads(rewrite(raw))
     if key == "portfolio-home":
@@ -42,6 +42,8 @@ for key, raw in text.items():
         seed["projects"][key[len("portfolio-project-"):]] = val
     elif key.startswith("portfolio-article-"):
         seed["articles"][key[len("portfolio-article-"):]] = val
+    elif key.startswith("portfolio-gallery-"):
+        seed["galleries"][key[len("portfolio-gallery-"):]] = val
 
 (ROOT / "content" / "seed.json").write_text(json.dumps(seed, indent=1, ensure_ascii=False) + "\n")
 print(f"media: {len(paths)} files → public/media; projects: {len(seed['projects'])}; articles: {len(seed['articles'])}; home: {bool(seed['home'])}")

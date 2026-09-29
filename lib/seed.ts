@@ -10,6 +10,7 @@ interface SeedFile {
   home: Json | null
   projects: Record<string, Json>
   articles: Record<string, Json>
+  galleries?: Record<string, Json>
 }
 
 const SEED = seed as unknown as SeedFile
@@ -24,6 +25,10 @@ export function seedProject(slug: string): unknown {
 
 export function seedArticle(slug: string): unknown {
   return SEED.articles[slug] ?? null
+}
+
+export function seedGallery(slug: string): unknown {
+  return SEED.galleries?.[slug] ?? null
 }
 
 /** The "Previous Projects" rows from the seeded landing page. */
