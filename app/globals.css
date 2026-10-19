@@ -37,3 +37,14 @@ a:hover {
 .portfolio-article-body table { width: 100%; min-width: 500px; border-collapse: collapse; font-size: 13px; line-height: 1.6; }
 .portfolio-article-body th, .portfolio-article-body td { text-align: left; vertical-align: top; padding: 12px 10px; border-bottom: 1px solid #dedcd6; }
 .portfolio-article-body th { color: #111; font-weight: 600; }
+
+.creatives-page { max-width: 1120px; margin: 0 auto; padding: 64px 40px 120px; }
+.creatives-category { margin: 0 0 22px; color: #999; font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
+.creatives-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.creatives-cell { min-width: 0; }
+.creatives-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.creatives-image-button:focus-visible { outline: 2px solid #555; outline-offset: -3px; }
+.creatives-close { position: absolute; right: 24px; top: 20px; width: 40px; height: 40px; border: 0; background: #f7f6f3; color: #555; font-size: 28px; cursor: pointer; }
+.creatives-close:focus-visible { outline: 1px solid #555; }
+@media (max-width: 760px) { .creatives-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (max-width: 480px) { .creatives-page { padding: 40px 24px 80px; } .creatives-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -47,8 +47,7 @@ const DEFAULT: HomeData = {
       {"id":"human-evaluation-needed-for-physical-ai","label":"Human Evaluation Needed for Physical AI","slug":"human-evaluation-needed-for-physical-ai"},
     ]},
     { id: "creatives", label: "Exploration", isExploration: true, items: [
-      { id: "c1", label: "Art",          slug: "art"          },
-      { id: "c2", label: "Photography",  slug: "photography"  },
+      { id: "creatives-gallery", label: "Creatives", slug: "creatives" },
       { id: "c3", label: "Paper Review", slug: "paper-review" },
     ]},
     { id: "awards", label: "Awards", items: [

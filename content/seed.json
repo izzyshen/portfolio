@@ -95,21 +95,17 @@
     "label": "Exploration",
     "items": [
      {
-      "id": "c1",
-      "label": "Art",
-      "slug": "art"
-     },
-     {
-      "id": "c2",
-      "label": "Photography",
-      "slug": "photography"
+      "id": "creatives-gallery",
+      "label": "Creatives",
+      "slug": "creatives"
      },
      {
       "id": "c3",
       "label": "Paper Review",
       "slug": "paper-review"
      }
-    ]
+    ],
+    "isExploration": true
    },
    {
     "id": "awards",
@@ -166,7 +162,7 @@
     ]
    }
   ],
-  "_seededAt": "2026-10-19T14:47:03.841Z"
+  "_seededAt": "2026-10-19T15:02:55.499Z"
  },
  "projects": {
   "graphite-build-taste-with-ai": {
@@ -888,5 +884,138 @@
    "_seededAt": "2026-10-19T14:47:03.841Z"
   }
  },
- "galleries": {}
+ "galleries": {
+  "creatives": {
+   "title": "Creatives",
+   "images": [
+    {
+     "id": "creative-08c28d52fddb",
+     "src": "/creatives/creative-08c28d52fddb.webp",
+     "fullSrc": "/creatives/creative-08c28d52fddb-full.webp",
+     "caption": "A quiet colonnade with white columns and hanging lanterns",
+     "category": "Photography",
+     "width": 960,
+     "height": 640
+    },
+    {
+     "id": "creative-3e10a37eeb14",
+     "src": "/creatives/creative-3e10a37eeb14.webp",
+     "fullSrc": "/creatives/creative-3e10a37eeb14-full.webp",
+     "caption": "A person passing an installation of oversized red spheres",
+     "category": "Photography",
+     "width": 960,
+     "height": 640
+    },
+    {
+     "id": "creative-a55e27cda2d4",
+     "src": "/creatives/creative-a55e27cda2d4.webp",
+     "fullSrc": "/creatives/creative-a55e27cda2d4-full.webp",
+     "caption": "A curved mirrored sculpture reflecting the surrounding city",
+     "category": "Photography",
+     "width": 960,
+     "height": 640
+    },
+    {
+     "id": "creative-4c5c60c8a3ce",
+     "src": "/creatives/creative-4c5c60c8a3ce.webp",
+     "fullSrc": "/creatives/creative-4c5c60c8a3ce-full.webp",
+     "caption": "A tree-lined path in autumn with a tower in the distance",
+     "category": "Photography",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-53fb210c9155",
+     "src": "/creatives/creative-53fb210c9155.webp",
+     "fullSrc": "/creatives/creative-53fb210c9155-full.webp",
+     "caption": "Golden autumn leaves against a clear blue sky",
+     "category": "Photography",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-ee0fec072421",
+     "src": "/creatives/creative-ee0fec072421.webp",
+     "fullSrc": "/creatives/creative-ee0fec072421-full.webp",
+     "caption": "A winding path beneath autumn trees",
+     "category": "Photography",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-d128abf528f2",
+     "src": "/creatives/creative-d128abf528f2.webp",
+     "fullSrc": "/creatives/creative-d128abf528f2-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 1",
+     "category": "Art",
+     "width": 960,
+     "height": 1374
+    },
+    {
+     "id": "creative-aa9ea76ade2d",
+     "src": "/creatives/creative-aa9ea76ade2d.webp",
+     "fullSrc": "/creatives/creative-aa9ea76ade2d-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 2",
+     "category": "Art",
+     "width": 960,
+     "height": 1374
+    },
+    {
+     "id": "creative-7ad6fb763ffe",
+     "src": "/creatives/creative-7ad6fb763ffe.webp",
+     "fullSrc": "/creatives/creative-7ad6fb763ffe-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 3",
+     "category": "Art",
+     "width": 960,
+     "height": 1374
+    },
+    {
+     "id": "creative-46c2f8c5d173",
+     "src": "/creatives/creative-46c2f8c5d173.webp",
+     "fullSrc": "/creatives/creative-46c2f8c5d173-full.webp",
+     "caption": "Pencil study of a figure, flowing ribbons, and birds",
+     "category": "Art",
+     "width": 960,
+     "height": 1375
+    },
+    {
+     "id": "creative-e7bc8eab40d1",
+     "src": "/creatives/creative-e7bc8eab40d1.webp",
+     "fullSrc": "/creatives/creative-e7bc8eab40d1-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 5",
+     "category": "Art",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-c3852686e947",
+     "src": "/creatives/creative-c3852686e947.webp",
+     "fullSrc": "/creatives/creative-c3852686e947-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 6",
+     "category": "Art",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-eb5c2d34b04d",
+     "src": "/creatives/creative-eb5c2d34b04d.webp",
+     "fullSrc": "/creatives/creative-eb5c2d34b04d-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 7",
+     "category": "Art",
+     "width": 933,
+     "height": 1400
+    },
+    {
+     "id": "creative-138dec558247",
+     "src": "/creatives/creative-138dec558247.webp",
+     "fullSrc": "/creatives/creative-138dec558247-full.webp",
+     "caption": "A figure, birds, and flowing ribbons — artwork 8",
+     "category": "Art",
+     "width": 960,
+     "height": 1375
+    }
+   ],
+   "_seededAt": "2026-10-19T15:02:55.499Z"
+  }
+ }
 }

@@ -1,20 +1,17 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useMediaSrc, storeImageFile, pruneOrphanedMedia } from "@/lib/mediaStore"
 import { useEditMode } from "@/lib/editMode"
 import { seedGallery, pickContent, stamp } from "@/lib/seed"
 
 /**
- * Art / Photography: an edge-aligned image grid. Every cell is the same size
- * with the image cropped to fill it, so edges line up however many images are
- * added; clicking a cell opens the uncropped image. Always editable by its
- * owner — outside edit mode the upload and delete controls shrink to a few
- * faint pixels so readers don't notice them.
+ * Creatives: photographs and artwork at their original proportions, grouped
+ * into responsive galleries. Clicking a cell opens the larger image.
  */
 
-interface GalleryImage { id: string; src: string; caption: string }
+interface GalleryImage { id: string; src: string; fullSrc?: string; caption: string; category?: string; width?: number; height?: number }
 interface GalleryContent { title: string; images: GalleryImage[] }
 
 const uid = () => Math.random().toString(36).slice(2, 8)
@@ -45,17 +42,29 @@ function Cell({
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "#eeede9" }}
+      className="creatives-cell"
+      style={{ position: "relative", overflow: "hidden", background: "#eeede9" }}
     >
       {src && (
-        // eslint-disable-next-line @next/next/no-img-element
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`View ${image.caption || "image"}`}
+          className="creatives-image-button"
+        >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={image.caption}
-          onClick={onOpen}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "zoom-in" }}
+          width={image.width}
+          height={image.height}
+          loading="lazy"
+          decoding="async"
+          style={{ width: "100%", height: "auto", display: "block" }}
         />
+        </button>
       )}
+      {!subtle && (
       <button
         onClick={e => { e.stopPropagation(); onDelete() }}
         title="remove"
@@ -71,29 +80,46 @@ function Cell({
       >
         ×
       </button>
+      )}
     </div>
   )
 }
 
 // ── full-size viewer ──────────────────────────────────────────────────────────
 function Lightbox({ image, onClose }: { image: GalleryImage; onClose: () => void }) {
-  const src = useMediaSrc(image.src)
+  const src = useMediaSrc(image.fullSrc ?? image.src)
+  const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    closeRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+      if (e.key === "Tab") { e.preventDefault(); closeRef.current?.focus() }
+    }
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      document.body.style.overflow = previousOverflow
+      previousFocus?.focus()
+    }
   }, [onClose])
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 300, background: "rgba(247,246,243,0.96)",
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", padding: 40,
       }}
     >
+      <button ref={closeRef} type="button" onClick={onClose} aria-label="Close image" className="creatives-close">×</button>
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={image.caption} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} />
+        <img src={src} alt={image.caption} onClick={event => event.stopPropagation()} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} />
       )}
     </div>
   )
@@ -106,6 +132,7 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
   const subtle = !editMode
   const [content, setContent] = useState<GalleryContent | null>(null)
   const [open, setOpen] = useState<GalleryImage | null>(null)
+  const closeImage = useCallback(() => setOpen(null), [])
   const [busy, setBusy] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -187,9 +214,11 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
 
   if (!content) return <div style={{ background: "#f7f6f3", minHeight: "100vh" }} />
 
+  const categories = Array.from(new Set(content.images.map(image => image.category ?? "")))
+
   return (
     <main style={{ minHeight: "100vh", background: "#f7f6f3", color: "#111", fontFamily: "'Afacad', sans-serif" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "64px 40px 140px" }}>
+      <div className="creatives-page">
 
         <Link
           href="/"
@@ -202,8 +231,11 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
           {content.title}
         </h1>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-          {content.images.map(img => (
+        {categories.map(category => (
+        <section key={category} aria-label={category || "Gallery"} style={{ marginBottom: 64 }}>
+          {category && <h2 className="creatives-category">{category}</h2>}
+          <div className="creatives-grid">
+          {content.images.filter(image => (image.category ?? "") === category).map(img => (
             <Cell
               key={img.id}
               image={img}
@@ -212,10 +244,12 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
               onDelete={() => patch({ images: content.images.filter(i => i.id !== img.id) })}
             />
           ))}
-        </div>
+          </div>
+        </section>
+        ))}
 
-        {/* upload — a normal button in edit mode, a few faint pixels otherwise */}
-        <div style={{ marginTop: subtle ? 4 : 18, display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Owner upload controls. */}
+        {editMode && <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => inputRef.current?.click()}
             disabled={busy}
@@ -235,10 +269,10 @@ export default function GalleryTemplate({ slug }: { slug: string }) {
             ref={inputRef} type="file" accept="image/*" multiple style={{ display: "none" }}
             onChange={e => { void addFiles(e.target.files); e.target.value = "" }}
           />
-        </div>
+        </div>}
       </div>
 
-      {open && <Lightbox image={open} onClose={() => setOpen(null)} />}
+      {open && <Lightbox image={open} onClose={closeImage} />}
 
       {savedMsg && (
         <div style={{ position: "fixed", bottom: 28, right: 32, color: subtle ? "#e6e4de" : "#c4c2bc", fontSize: subtle ? 6 : 9, letterSpacing: "0.2em", pointerEvents: "none" }}>
