@@ -361,6 +361,7 @@ function EditBody({
     <>
       <div
         ref={ref}
+        className="portfolio-article-body"
         contentEditable={editable}
         suppressContentEditableWarning
         onFocus={() => {

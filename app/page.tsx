@@ -40,7 +40,11 @@ const DEFAULT: HomeData = {
       { id: "drift",    label: "Drift",     slug: "drift"    },
     ]},
     { id: "thoughts", label: "Blog", isArticles: true, items: [
-      { id: "t1", label: "Creative Paradigm in AI Era" },
+      {"id":"michelins-for-ai-benchmark-research","label":"Michelins for AI Benchmark Research","slug":"michelins-for-ai-benchmark-research"},
+      {"id":"arena-ai-competitive-analysis","label":"Arena.ai Competitive Analysis","slug":"arena-ai-competitive-analysis"},
+      {"id":"from-ai-creativity-to-3d-agents","label":"From AI Creativity to 3D Agents","slug":"from-ai-creativity-to-3d-agents"},
+      {"id":"simulation-in-3d-worlds","label":"Simulation in 3D Worlds","slug":"simulation-in-3d-worlds"},
+      {"id":"human-evaluation-needed-for-physical-ai","label":"Human Evaluation Needed for Physical AI","slug":"human-evaluation-needed-for-physical-ai"},
     ]},
     { id: "creatives", label: "Exploration", isExploration: true, items: [
       { id: "c1", label: "Art",          slug: "art"          },

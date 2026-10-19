@@ -23,3 +23,17 @@ a {
 a:hover {
   opacity: 0.5;
 }
+
+.portfolio-article-body p { margin: 0 0 1.25em; }
+.portfolio-article-body h2 { font-size: 21px; font-weight: 500; color: #111; line-height: 1.35; margin: 2em 0 0.75em; }
+.portfolio-article-body h3 { font-size: 17px; font-weight: 500; color: #222; line-height: 1.4; margin: 1.6em 0 0.65em; }
+.portfolio-article-body ul, .portfolio-article-body ol { padding-left: 1.4em; margin: 0 0 1.25em; }
+.portfolio-article-body ul { list-style: disc; }
+.portfolio-article-body ol { list-style: decimal; }
+.portfolio-article-body li { margin-bottom: 0.55em; }
+.portfolio-article-body a { border-bottom: 1px solid #cfcdc7; }
+.portfolio-article-body code { font-size: 0.8em; overflow-wrap: anywhere; }
+.portfolio-article-body .article-table { max-width: 100%; overflow-x: auto; margin: 1.5em 0; }
+.portfolio-article-body table { width: 100%; min-width: 500px; border-collapse: collapse; font-size: 13px; line-height: 1.6; }
+.portfolio-article-body th, .portfolio-article-body td { text-align: left; vertical-align: top; padding: 12px 10px; border-bottom: 1px solid #dedcd6; }
+.portfolio-article-body th { color: #111; font-weight: 600; }
